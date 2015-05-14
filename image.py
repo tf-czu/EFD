@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 from contours import *
 
 
-def writeLabelsInImg( img, referencePoints, outFileName ):
+def writeLabelsInImg( img, referencePoints, outFileName, resize = 1 ):
     num = 0
     color = (0,0,255)
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -22,7 +22,8 @@ def writeLabelsInImg( img, referencePoints, outFileName ):
         cv2.putText(img, str(num),point, font, 4,color,2 )
         num += 1
     
-    cv2.imwrite( outFileName, img )
+    imgResize = cv2.resize(img, None, fx = resize, fy = resize, interpolation = cv2.INTER_CUBIC)
+    cv2.imwrite( outFileName, imgResize )
 
 
 def writeImg( img, fileName ):

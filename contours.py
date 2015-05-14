@@ -51,7 +51,7 @@ def sortContoursXY( contours, referencePoints, columns = 10, rows = 10, directio
     refPointsF = []
     sortedCntF = []
     
-    print referencePoints
+    #print referencePoints
     for ii in xrange(columns):
         index0 = ii * rows
         index1 = ( ii + 1 ) * rows
