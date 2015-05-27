@@ -12,18 +12,45 @@ from matplotlib import pyplot as plt
 
 from contours import *
 
+CUTING = True
+Xi = 252
+Yi = 72
+Xe = 4176
+Ye = 2560
 
-def writeLabelsInImg( img, referencePoints, outFileName, resize = 1 ):
-    num = 0
-    color = (0,0,255)
+
+def cutImage(img, xi, yi, xe, ye, imShow = False ):
+    img = img[yi:ye, xi:xe]
+    if imShow == True:
+        showImg( img )
+    return img
+
+
+def writeLabelsInImg( img, referencePoints1, outFileName, referencePoints2 = None, resize = None ):
+    num1 = 0
+    color1 = (0,0,255)
     font = cv2.FONT_HERSHEY_SIMPLEX
-    for point in referencePoints:
+    for point in referencePoints1:
         point = tuple(point)
-        cv2.putText(img, str(num),point, font, 4,color,2 )
-        num += 1
+        cv2.putText(img, str(num1),point, font, 3,color1,2 )
+        num1 += 1
     
-    imgResize = cv2.resize(img, None, fx = resize, fy = resize, interpolation = cv2.INTER_CUBIC)
-    cv2.imwrite( outFileName, imgResize )
+    if referencePoints2:
+        offset = np.array([150, 0])
+        num2 = 0
+        color2 = (255, 0, 0)
+        for point2 in referencePoints2:
+            print point2
+            point2 = point2 + offset
+            print"point", point2
+            point2 = tuple(point2)
+            cv2.putText(img, str(num2),point2, font, 2,color2,2 )
+            num2 += 1
+            
+    if resize:
+        img = cv2.resize(img, None, fx = resize, fy = resize, interpolation = cv2.INTER_CUBIC)
+    cv2.imwrite( outFileName, img )
+    return img
 
 
 def writeImg( img, fileName ):
@@ -72,8 +99,12 @@ def openingClosing( binaryImg, ker1 = 5, ker2 = 2 ):
     return newBinaryImg
 
 
-def imageMain( imageFile, tresh, color ):
+def imageMain( imageFile, tresh, color, cuting = True ):
     img = cv2.imread( imageFile, 1 )
+    if cuting == True:
+        img = cutImage(img, Xi, Yi, Xe, Ye, imShow = False )
+        cv2.imwrite( "cutedImg.png", img )
+        
     gray = getGrayImg( img, color )
     
     grayImgName = imageFile.split(".")[0]+"_gray.png"
@@ -96,7 +127,11 @@ def imageMain( imageFile, tresh, color ):
         
         outFileNameLab = imageFile.split(".")[0]+"_lab.png"
         #print outFileNameLab
-        writeLabelsInImg( img, referencePoints, outFileNameLab )
+        img = writeLabelsInImg( img, referencePoints, outFileNameLab )
+        
+        #cntNum = 100
+        #cv2.drawContours(img, contoursList, cntNum, (0,255,0), 3)
+        #cv2.imwrite( "imgLabCNT.png", img )
 
 
 if __name__ == "__main__": 
@@ -112,5 +147,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         tresh = float(sys.argv[3])
         
+    cuting = CUTING
     imageFile = sys.argv[1]
-    imageMain( imageFile, tresh, color )
+    imageMain( imageFile, tresh, color, cuting )
