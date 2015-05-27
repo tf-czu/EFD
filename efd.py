@@ -15,18 +15,25 @@ from image import *
 from elliptic_fourier_descriptors import *
 
 #Constants
-NUMBER_OF_HARMONICS = 10
-SCALE = (20, 50) #TODO
-SCALE_NUM = 100
-IGNORE_LIST = [ 101, 102 ]
+NUMBER_OF_HARMONICS = 20
+SCALE = (19.8, 50.2) #TODO
+SCALE_NUM = 0
+IGNORE_LIST = [ ]
 OUTPUT_FILE = "log.txt"
 COLOR = "g"
-TRESCHOLD_VALUE = 120
+TRESCHOLD_VALUE = 150
 COLUMNS = 10
 ROWS = 10
+RESIZE = None
+
+CUTING = True
+Xi = 108 #252
+Yi = 132 #72
+Xe = 4100 #4176
+Ye = 2772 #2560
 
 
-def createLogFile( logFile, efds, cntAreas ):
+def createLogFile( logFile, efds, cntAreas, referencePoints ):
     f = open( logFile, "w" )
     ii = 0
     for efd in efds:
@@ -34,7 +41,13 @@ def createLogFile( logFile, efds, cntAreas ):
         
         f.write("label: "+str(ii)+"\r\n")
         f.write("area (mm2): "+str(cntA)+"\r\n")
-        f.write( "{0}".format(efd) )
+        f.write("coordinate: "+str( referencePoints[ii] ) + "\r\n" )
+        f.write("efd: \r\n")
+        for item in efd:
+            #f.write( "{0}".format(item) )
+            f.write( str(item) )
+            f.write("\r\n")
+            
         f.write("\r\n")
         
         ii += 1
@@ -94,8 +107,9 @@ def efdFromDir( directory ):
     print imList
     
     for imF in imList:
-        print imF
-        efdMain( imF, n, directory )
+        if imF.split(".")[-1] in ["jpg", "JPG"]:
+            print imF
+            efdMain( imF, n, directory )
 
 
 def efdMain( imageFile, n = 6, directory = None ):
@@ -103,6 +117,7 @@ def efdMain( imageFile, n = 6, directory = None ):
         img = cv2.imread( directory + imageFile, 1 )
     else:
         img = cv2.imread( imageFile, 1 )
+        cv2.imwrite("logs/img1.png", img)
     
     scale = SCALE
     scaleNum = SCALE_NUM
@@ -111,19 +126,29 @@ def efdMain( imageFile, n = 6, directory = None ):
     tresh = TRESCHOLD_VALUE
     columns = COLUMNS
     rows = ROWS
-     
+    cuting = CUTING
+    
+    if cuting == True:
+        img = cutImage(img, Xi, Yi, Xe, Ye, imShow = False )
+        cv2.imwrite("logs/img2.png", img)
+    
     gray = getGrayImg( img, color )
+    cv2.imwrite("logs/img3.png", gray)
     binaryImg = getThreshold( gray, tresh )
+    cv2.imwrite("logs/img4.png", binaryImg)
     binaryImg = openingClosing( binaryImg, ker1 = 5, ker2 = None )
+    cv2.imwrite("logs/img5.png", binaryImg)
     
     contoursList, hierarchy= cv2.findContours( binaryImg.copy(), mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
     contoursList, referencePoints = sortContours2(contoursList)
     
     contoursList, scaleCnt = getCleanList( contoursList, scaleNum, ignoreList ) #Cleanig
+    referencePoints2, scalePoint = getCleanList( referencePoints, scaleNum, ignoreList )
+    cv2.drawContours(img, contoursList, -1, (0,255,0), 3)
     numCntF = rows * columns
     assert len(contoursList) == numCntF, "len(contoursList) = %d" % len(contoursList)
     
-    contoursList, referencePoints = sortContoursXY(contoursList, referencePoints, columns = 10, rows = 10, ) #getting xy sorting
+    contoursList, referencePointsxy = sortContoursXY(contoursList, referencePoints2, columns = 10, rows = 10, ) #getting xy sorting
     contoursAreas = getContoursArea( contoursList )
     
     
@@ -139,15 +164,29 @@ def efdMain( imageFile, n = 6, directory = None ):
     cntAreas = getCntAreas( contoursAreas, pixelSize )
     
     #logFile = OUTPUT_FILE
-    logFile = "log_"+imageFile.split(".")[0]+".txt"
-    createLogFile( "logs/"+logFile, efds, cntAreas )
-    
-    outFileNameLab = imageFile.split(".")[0]+"_lab.png"
-    print outFileNameLab    
-    writeLabelsInImg( img, referencePoints, "logs/"+outFileNameLab, resize = 0.3 )
-    
-    outFileNameBi = imageFile.split(".")[0]+"_bi.png"
-    cv2.imwrite( "logs/"+outFileNameBi, binaryImg )
+    if directory:
+        logFile = directory+"logs/"+imageFile.split(".")[0]+"_log.txt"
+        createLogFile( logFile, efds, cntAreas, referencePointsxy )
+        
+        outFileNameLab = directory+"logs/"+imageFile.split(".")[0]+"_lab.png"
+        #print outFileNameLab    
+        resize = RESIZE
+        writeLabelsInImg( img, referencePointsxy, outFileNameLab, referencePoints, resize )
+        
+        outFileNameBi = directory+"logs/"+imageFile.split(".")[0]+"_bi.png"
+        cv2.imwrite( outFileNameBi, binaryImg )
+        
+    else:
+        logFile = imageFile.split(".")[0]+"_log.txt"
+        createLogFile( logFile, efds, cntAreas, referencePointsxy )
+        
+        outFileNameLab = imageFile.split(".")[0]+"_lab.png"
+        #print outFileNameLab    
+        resize = RESIZE
+        writeLabelsInImg( img, referencePointsxy, outFileNameLab, referencePoints, resize )
+        
+        outFileNameBi = imageFile.split(".")[0]+"_bi.png"
+        cv2.imwrite( outFileNameBi, binaryImg )
 
 
 if __name__ == "__main__": 
