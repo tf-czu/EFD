@@ -2,7 +2,8 @@
     This is a simple tool for drawing ellipses
         Usage:
             python drawing_ellipses.py abcd <number a> <number b> <number c> <number d>
-            python drawung_ellipses.py f <file name> <order>
+            python drawung_ellipses.py f <file name> <order> <N>
+            python drawung_ellipses.py f2 <file name> <order> <N> <white list>
 """
 
 import sys
@@ -25,9 +26,10 @@ def scaleIm(xy, Xc = 500, Yc = 500, scale = 250 ):
     return xy
 
 
-def xy2image( xyList ):
-    img = EM_IMAGE
-    color = (255, 0, 0)
+def xy2image( xyList, img = None, color = (255, 0, 0) ):
+    if img == None:
+        img = EM_IMAGE
+        
     for ii in xrange( len( xyList ) - 1 ):
         pt1 = ( int( xyList[ ii ][0] ), int( xyList[ ii ][1] ) )
         pt2 = ( int( xyList[ ii + 1 ][0] ), int( xyList[ ii + 1 ][1] ) )
@@ -114,10 +116,10 @@ def shapeFromFile( fileName, order, N ):
     print "rec", rec
     img = xy2image( rec )
     showImg( img )
-    writeImg( img, "testIm.png" )
+    writeImg( img, fileName.split(".")[0]+"_result.png" )
 
 
-def shapeFromFile2( fileName, order, N ):
+def shapeFromFile2( fileName, order, N, whiteList ):
     f = open( fileName, "r" )
     efdL = []
     nn = 0
@@ -143,27 +145,41 @@ def shapeFromFile2( fileName, order, N ):
             print abcd
             efdL.append(abcd)
             nn += 1
-            if nn == N:
+            if nn == N + 1:
                 break
                 
     print efdL
     efd = np.array(efdL)
+    if whiteList:
+        efd2 = np.zeros( efd.shape )
+        efd2[0,:] = efd[0,:]
+        for item in whiteList:
+            i = item / 4
+            j = item % 4
+            efd2[i,j] = efd[i,j]
+            
+        print efd2
+        
     #xyList = giveEfdXY( t, efds )
     rec = reconstruct(efd, T = 2810.5, K = 40)
-    
     rec = scaleIm(rec)
     print "rec", rec
     img = xy2image( rec )
+    if whiteList:
+        rec2 = reconstruct(efd2, T = 2810.5, K = 40)
+        rec2 = scaleIm(rec2)
+        img = xy2image( rec2, img, color = (0, 0, 255) )
+    
     showImg( img )
-    writeImg( img, "testIm.png" )
+    writeImg( img, fileName.split(".")[0]+"_result.png" )
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print __doc__
         sys.exit(1)
-        
-    N = None
+    
+    whiteList = None
     if sys.argv[1] == "abcd":
         a = float(sys.argv[2])
         b = float(sys.argv[3])
@@ -182,7 +198,8 @@ if __name__ == "__main__":
     if sys.argv[1] == "f2":
         fileName = sys.argv[2]
         order = int( sys.argv[3] )
-        if len( sys.argv ) > 4:
-            N = int( sys.argv[4] )
+        N = int( sys.argv[4] )
+        if len( sys.argv ) > 5:
+            whiteList = map( int, sys.argv[5:] )
             
-        shapeFromFile2( fileName, order, N )
+        shapeFromFile2( fileName, order, N, whiteList )

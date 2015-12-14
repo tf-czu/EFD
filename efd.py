@@ -17,20 +17,22 @@ from elliptic_fourier_descriptors import *
 #Constants
 NUMBER_OF_HARMONICS = 20
 SCALE = (19.8, 50.2) #TODO
-SCALE_NUM = 0
-IGNORE_LIST = [ ]
+#SCALE_NUM = 0
+SCALE_NUM = None
+IGNORE_LIST = []
 OUTPUT_FILE = "log.txt"
-COLOR = "g"
-TRESCHOLD_VALUE = 150
-COLUMNS = 10
-ROWS = 10
+COLOR = "b"
+TRESCHOLD_VALUE = 140
+COLUMNS = 4
+ROWS = 5
 RESIZE = None
+KER1 = 10 #5
 
 CUTING = True
-Xi = 108 #252
-Yi = 132 #72
-Xe = 4100 #4176
-Ye = 2772 #2560
+Xi = 800
+Yi = 350
+Xe = 3400
+Ye = 2700
 
 
 def createLogFile( logFile, efds, cntAreas, referencePoints ):
@@ -76,6 +78,7 @@ def simplePicture( efds, T, K ):
 
 def getCleanList( oldList, scaleNum, ignoreList ):
     cleanList = []
+    scaleCnt = None
     ii = 0
     for item in oldList:
         if ii == scaleNum:
@@ -106,8 +109,11 @@ def efdFromDir( directory ):
     imList = os.listdir( directory )
     print imList
     
+    ii = 0
     for imF in imList:
-        if imF.split(".")[-1] in ["jpg", "JPG"]:
+        if imF.split(".")[-1] in ["jpg", "JPG", "tiff"]:
+            print ii
+            ii += 1
             print imF
             efdMain( imF, n, directory )
 
@@ -127,6 +133,7 @@ def efdMain( imageFile, n = 6, directory = None ):
     columns = COLUMNS
     rows = ROWS
     cuting = CUTING
+    ker1 = KER1
     
     if cuting == True:
         img = cutImage(img, Xi, Yi, Xe, Ye, imShow = False )
@@ -136,7 +143,7 @@ def efdMain( imageFile, n = 6, directory = None ):
     cv2.imwrite("logs/img3.png", gray)
     binaryImg = getThreshold( gray, tresh )
     cv2.imwrite("logs/img4.png", binaryImg)
-    binaryImg = openingClosing( binaryImg, ker1 = 5, ker2 = None )
+    binaryImg = openingClosing( binaryImg, ker1, ker2 = None )
     cv2.imwrite("logs/img5.png", binaryImg)
     
     contoursList, hierarchy= cv2.findContours( binaryImg.copy(), mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
@@ -144,24 +151,26 @@ def efdMain( imageFile, n = 6, directory = None ):
     
     contoursList, scaleCnt = getCleanList( contoursList, scaleNum, ignoreList ) #Cleanig
     referencePoints2, scalePoint = getCleanList( referencePoints, scaleNum, ignoreList )
-    cv2.drawContours(img, contoursList, -1, (0,255,0), 3)
+    cv2.drawContours(img, contoursList, -1, (0,255,0), 1)
     numCntF = rows * columns
     assert len(contoursList) == numCntF, "len(contoursList) = %d" % len(contoursList)
     
-    contoursList, referencePointsxy = sortContoursXY(contoursList, referencePoints2, columns = 10, rows = 10, ) #getting xy sorting
+    contoursList, referencePointsxy = sortContoursXY(contoursList, referencePoints2, columns, rows, ) #getting xy sorting
     contoursAreas = getContoursArea( contoursList )
     
     
     
     efds, K, T = elliptic_fourier_descriptors2( contoursList, n )
     
-    print "efds \n {0}".format(efds)
+    #print "efds \n {0}".format(efds)
     
-    scaleAreaP = cv2.contourArea( scaleCnt )
-    scaleArea = scale[0] * scale[1] #Unit mm^2
-    pixelSize = scaleArea / scaleAreaP
-    
-    cntAreas = getCntAreas( contoursAreas, pixelSize )
+    if scaleNum is not None:
+        scaleAreaP = cv2.contourArea( scaleCnt )
+        scaleArea = scale[0] * scale[1] #Unit mm^2
+        pixelSize = scaleArea / scaleAreaP
+        cntAreas = getCntAreas( contoursAreas, pixelSize )
+    else:
+        cntAreas = contoursAreas
     
     #logFile = OUTPUT_FILE
     if directory:
@@ -173,8 +182,8 @@ def efdMain( imageFile, n = 6, directory = None ):
         resize = RESIZE
         writeLabelsInImg( img, referencePointsxy, outFileNameLab, referencePoints, resize )
         
-        outFileNameBi = directory+"logs/"+imageFile.split(".")[0]+"_bi.png"
-        cv2.imwrite( outFileNameBi, binaryImg )
+        #outFileNameBi = directory+"logs/"+imageFile.split(".")[0]+"_bi.png"
+        #cv2.imwrite( outFileNameBi, binaryImg )
         
     else:
         logFile = imageFile.split(".")[0]+"_log.txt"

@@ -13,10 +13,10 @@ from matplotlib import pyplot as plt
 from contours import *
 
 CUTING = True
-Xi = 252
-Yi = 72
-Xe = 4176
-Ye = 2560
+Xi = 800
+Yi = 350
+Xe = 3400
+Ye = 2700
 
 
 def cutImage(img, xi, yi, xe, ye, imShow = False ):
@@ -40,9 +40,9 @@ def writeLabelsInImg( img, referencePoints1, outFileName, referencePoints2 = Non
         num2 = 0
         color2 = (255, 0, 0)
         for point2 in referencePoints2:
-            print point2
+            #print point2
             point2 = point2 + offset
-            print"point", point2
+            #print"point", point2
             point2 = tuple(point2)
             cv2.putText(img, str(num2),point2, font, 2,color2,2 )
             num2 += 1
@@ -87,7 +87,7 @@ def getThreshold( gray, thrValue ):
     return binaryImg
 
 
-def openingClosing( binaryImg, ker1 = 5, ker2 = 2 ):
+def openingClosing( binaryImg, ker1 = 10, ker2 = 5 ):
     newBinaryImg = None
     kernel = np.ones( ( ker1, ker1 ), np.uint8 )
     newBinaryImg = cv2.morphologyEx( binaryImg, cv2.MORPH_OPEN, kernel)
