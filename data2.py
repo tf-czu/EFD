@@ -35,8 +35,9 @@ LEN_EFD_G2 = 60
 LEN_EFD_G3 = 30
 
 #Fit model 5
-GRID1 = ( 0, 6.0, 101 )
-GRID2 = ( 0, 6.0, 101 )
+GRID1 = ( 0, 20.0, 2001 )
+GRID2 = ( 0, 5.0, 501 )
+GRIDF = 401
 
 
 createAreaPlots = False
@@ -87,25 +88,32 @@ def divideMatrix( myArr ):
     return arrA, arrB
     
 
-def getLocalMin( diffYYpNormAr ):
-    r, c = diffYYpNormAr.shape
+def getLocalMin( myAr ):
+    r, c = myAr.shape
     localMinList = []
+    minValueList = []
     for rr in xrange(r):
-        if rr == 0 or rr == ( r - 1 ):
+        if rr <= 1 or rr >= ( r - 2 ):
             continue
             
         for cc in xrange(c):
-            if cc == 0 or cc == ( c - 1 ):
+            if cc <= 1 or cc >= ( c - 2 ):
                 continue
                 
-            x11 = diffYYpNormAr[rr,cc]
-            if np.isnan(x11):
+            x00 = myAr[rr,cc]
+            if np.isnan(x00):
                 continue
-            localGrup = diffYYpNormAr[ rr-1:r+1, cc-1:cc+1 ]
-            if x11 == np.nanmin( localGrup ):
+            localGrup = myAr[ rr-2:r+2, cc-2:cc+2 ]
+            if x00 == np.nanmin( localGrup ):
                 localMinList.append( [rr,cc] )
+                minValueList.append( x00 )
+    if len( localMinList ) > 0:
+        absMin = localMinList[ np.argmin( minValueList ) ]
+        return localMinList, tuple( absMin ), minValueList
+    else:
+        return None, None, None
     
-    return localMinList
+    
 
 
 def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
@@ -119,6 +127,7 @@ def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
     k2Ar = np.linspace( k2f, k2l, k2n )
     diffYYpNormAr = np.zeros( ( k1n, k2n ) )
     coeffAr = np.zeros( ( k1n, k2n, 6 ) )
+    solutionLog = None
     
     ii = 0
     for k1 in k1Ar:
@@ -162,7 +171,13 @@ def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
             try:
                 X = np.linalg.solve(A, B)
             except:
-                print "ii, jj, k1, k2", ii, jj, k1, k2
+                if solutionLog is None:
+                    slogName = "logs2/area/solutinLog"+str(seedId)+".txt"
+                    solutionLog = open( slogName, "w")
+                    solutionLog.write( "ii, jj, k1, k2\r\n" )
+                    print "The solutinLog was created!"
+                    
+                solutionLog.write("%d, %d, %f, %f\r\n" % ( ii, jj, k1, k2 ) )
                 diffYYpNormAr[ii,jj] = None
                 coeffAr[ii,jj] = None
                 jj += 1
@@ -187,6 +202,9 @@ def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
             #    sys.exit()
             
         ii += 1
+    
+    if solutionLog is not None:
+        solutionLog.close()
     
     return diffYYpNormAr, coeffAr
 
@@ -767,6 +785,7 @@ def efdAnalyse1( directory ):
     if areaAnalyse2 == True:
         gridK1 = GRID1
         gridK2 = GRID2
+        gridF = GRIDF
         logFit = open("logs2/area/log_fit.txt", "w")
         logFit.write("number seed, value, S0, a, k1, k2, d, a0\r\n")
         logFitF = open("logs2/area/log_fitF.txt", "w")
@@ -774,32 +793,53 @@ def efdAnalyse1( directory ):
         print areaAr.shape
             
         for ii in xrange(d2):
-            if ii in [ 17 ]:
-                gridK1 = ( 0, 10.0, 10001 )
-                gridK2 = ( 0, 10.0, 10001 )
-                #continue
+            if ii not in [ 10, 12, 16 ]:
+                ##gridK1 = ( 0, 10.0, 10001 )
+                ##gridK2 = ( 0, 10.0, 10001 )
+                continue
             y = areaAr[:, ii]
             #sigma = np.ones( y.shape )[300:] = 2.0
             y = y[0:300]
             x = x[0:300]
-            diffYYpNormAr, coeffAr = fitModel5( x, y, ii, gridK1, gridK2 )
+            diffYYpNormAr, coeffAr = fitModel5( x, y, ii, gridK1, gridK2, sigma = None, oneSide = True )
             #np.savetxt("diffYYpNormAr", diffYYpNormAr)
             #np.savetxt("coeffAr", coeffAr)
             
-            diffYYpNormArA, diffYYpNormArB = divideMatrix( diffYYpNormAr )
-            idCoeffA = np.nanargmin(diffYYpNormArA)
-            idCoeffB = np.nanargmin(diffYYpNormArB)
-            idCoeffA = np.unravel_index( idCoeffA, diffYYpNormAr.shape )
-            idCoeffB = np.unravel_index( idCoeffB, diffYYpNormAr.shape )
-            S0A, aA, k1A, k2A, dA, a0A = coeffAr[idCoeffA]
-            S0B, aB, k1B, k2B, dB, a0B = coeffAr[idCoeffB]
-            ypA = model5( x, S0A, aA, k1A, k2A, dA, a0A )
-            ypB = model5( x, S0B, aB, k1B, k2B, dB, a0B )
-            logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffA], S0A, aA, k1A, k2A, dA, a0A ) )
-            logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffB], S0B, aB, k1B, k2B, dB, a0B ) )
+            #diffYYpNormArA, diffYYpNormArB = divideMatrix( diffYYpNormAr )
+            #idCoeffA = np.nanargmin(diffYYpNormArA)
+            #idCoeffB = np.nanargmin(diffYYpNormArB)
+            #idCoeffA = np.unravel_index( idCoeffA, diffYYpNormAr.shape )
+            #idCoeffB = np.unravel_index( idCoeffB, diffYYpNormAr.shape )
+            #S0A, aA, k1A, k2A, dA, a0A = coeffAr[idCoeffA]
+            #S0B, aB, k1B, k2B, dB, a0B = coeffAr[idCoeffB]
+            #ypA = model5( x, S0A, aA, k1A, k2A, dA, a0A )
+            #ypB = model5( x, S0B, aB, k1B, k2B, dB, a0B )
+            
+            idCoeff = np.nanargmin( diffYYpNormAr )
+            idCoeff = np.unravel_index( idCoeff, diffYYpNormAr.shape )
+            print "abs min: ", idCoeff, diffYYpNormAr[idCoeff]
+            localMinList, absMin, minValueList = getLocalMin( diffYYpNormAr )
+            if absMin is None:
+                print "The local minimum was not found!"
+                logFit.write("%d, No local minimum! The minimum value: %f in (%d, %d)\r\n" %( ii, diffYYpNormAr[idCoeff], idCoeff[0], idCoeff[1] ) )
+                logFit.flush()
+                continue
+            
+            idCoeff = absMin
+            print "localMinList, absMin, minValueList", localMinList, absMin, minValueList
+            S0, a, k1, k2, d, a0 = coeffAr[idCoeff]
+            
+            #logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffA], S0A, aA, k1A, k2A, dA, a0A ) )
+            #logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffB], S0B, aB, k1B, k2B, dB, a0B ) )
+            logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeff], S0, a, k1, k2, d, a0 ) )
             logFit.flush()
-            print ii, diffYYpNormAr[idCoeffA]
-            print ii, diffYYpNormAr[idCoeffB]
+            for item in localMinList:
+                item = tuple(item)
+                print "Coeficints: ", item, diffYYpNormAr[item], coeffAr[item]
+                logFit.write("Coeficints: "+str( item )+", "+str(diffYYpNormAr[item])+", "+str(coeffAr[item])+"\r\n" )
+            logFit.flush()
+            
+            print ii, diffYYpNormAr[idCoeff]
             
             plt.figure()
             xAr = np.linspace( gridK2[0], gridK2[1], gridK2[2] )
@@ -809,7 +849,7 @@ def efdAnalyse1( directory ):
             plt.clf
             plt.close()
             
-            maxValueIm = diffYYpNormAr[idCoeffA] + 10.0
+            maxValueIm = diffYYpNormAr[idCoeff] + 100.0
             dataForDetail = diffYYpNormAr
             dataForDetail[ dataForDetail > maxValueIm ] = np.nan
             plt.contourf( xAr, yAr, dataForDetail, 100 )
@@ -817,38 +857,34 @@ def efdAnalyse1( directory ):
             plt.clf
             plt.close()
             
-            if k1A != k2B:
-                print "!!!k1A != k2B!!!"
-                print "%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffA], S0A, aA, k1A, k2A, dA, a0A )
-                print "%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffB], S0B, aB, k1B, k2B, dB, a0B )
-                continue
+            #if k1A != k2B:
+                #print "!!!k1A != k2B!!!"
+                #print "%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffA], S0A, aA, k1A, k2A, dA, a0A )
+                #print "%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffB], S0B, aB, k1B, k2B, dB, a0B )
+                #continue
                 
-            elif k1A <= k2A:
-                print "!!!k1A <= k2A!!!"
-                print "%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffA], S0A, aA, k1A, k2A, dA, a0A )
-                print "%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffB], S0B, aB, k1B, k2B, dB, a0B )
-                continue
-                
-            if k1A == gridK1[1]:
-                gridK12 = gridK1
-                k1A2 = k1A
-                while k1A2 == gridK12[1]:
-                    gridK12 = ( k1A, k1A2 + 1.0, 1001 )
-                    diffYYpNormAr2, coeffAr2 = fitModel5( x, y, ii, gridK12, gridK2 )
-                    idCoeffA2 = np.nanargmin(diffYYpNormAr2)
-                    idCoeffA2 = np.unravel_index( idCoeffA2, diffYYpNormAr2.shape )
-                    S0A2, aA2, k1A2, k2A2, dA2, a0A2 = coeffAr2[idCoeffA2]
-                    logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr2[idCoeffA2], S0A2, aA2, k1A2, k2A2, dA2, a0A2 ) )
-                    print "+",ii, diffYYpNormAr2[idCoeffA2]
-                    logFit.flush()
-                k1 = k1A2
-                k2 = k2A2
-            else:
-                k1 = k1A
-                k2 = k2A
+            #if k1A == gridK1[1]:
+                #gridK12 = gridK1
+                #k1A2 = k1A
+                #while k1A2 == gridK12[1]:
+                    #gridK12 = ( k1A, k1A2 + 1.0, 1001 )
+                    #diffYYpNormAr2, coeffAr2 = fitModel5( x, y, ii, gridK12, gridK2 )
+                    #idCoeffA2 = np.nanargmin(diffYYpNormAr2)
+                    #idCoeffA2 = np.unravel_index( idCoeffA2, diffYYpNormAr2.shape )
+                    #S0A2, aA2, k1A2, k2A2, dA2, a0A2 = coeffAr2[idCoeffA2]
+                    #logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr2[idCoeffA2], S0A2, aA2, k1A2, k2A2, dA2, a0A2 ) )
+                    #print "+",ii, diffYYpNormAr2[idCoeffA2]
+                    #logFit.flush()
+                #k1 = k1A2
+                #k2 = k2A2
+            #else:
+                #k1 = k1A
+                #k2 = k2A
             
-            gridK1F = ( k1 - 0.001, k1 + 0.001, 201 )#TODO
-            gridK2F = ( k2 - 0.001, k2 + 0.001, 201 )
+            gridD1F = 2.0*( ( gridK1[1] + gridK1[0] ) / ( gridK1[2] - 1 ) )
+            gridD2F = 2.0*( ( gridK2[1] + gridK2[0] ) / ( gridK2[2] - 1 ) )
+            gridK1F = ( k1 - gridD1F, k1 + gridD1F, gridF )
+            gridK2F = ( k2 - gridD2F, k2 + gridD2F, gridF )
             diffYYpNormArF, coeffArF = fitModel5( x, y, ii, gridK1F, gridK2F, sigma = None, oneSide = True )
             idCoeffF = np.nanargmin(diffYYpNormArF)
             idCoeffF = np.unravel_index( idCoeffF, diffYYpNormArF.shape )
