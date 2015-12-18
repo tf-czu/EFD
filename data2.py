@@ -35,8 +35,8 @@ LEN_EFD_G2 = 60
 LEN_EFD_G3 = 30
 
 #Fit model 5
-GRID1 = ( 0, 20.0, 2001 )
-GRID2 = ( 0, 5.0, 501 )
+GRID1 = ( 0, 20.0, 20001 )
+GRID2 = ( 0, 5.0, 5001 )
 GRIDF = 401
 
 
