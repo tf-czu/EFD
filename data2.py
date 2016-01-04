@@ -35,8 +35,8 @@ LEN_EFD_G2 = 60
 LEN_EFD_G3 = 30
 
 #Fit model 5
-GRID1 = ( 0, 20.0, 20001 )
-GRID2 = ( 0, 5.0, 5001 )
+GRID1 = ( 0, 100.0, 50001 )
+GRID2 = ( 0, 5.0, 2501 )
 GRIDF = 401
 
 
@@ -793,7 +793,7 @@ def efdAnalyse1( directory ):
         print areaAr.shape
             
         for ii in xrange(d2):
-            if ii not in [ 10, 12, 16 ]:
+            if ii in [ 10, 12, 16 ]:
                 ##gridK1 = ( 0, 10.0, 10001 )
                 ##gridK2 = ( 0, 10.0, 10001 )
                 continue
