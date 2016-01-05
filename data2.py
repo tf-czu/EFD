@@ -35,7 +35,7 @@ LEN_EFD_G2 = 60
 LEN_EFD_G3 = 30
 
 #Fit model 5
-GRID1 = ( 0, 100.0, 50001 )
+GRID1 = ( 0, 50.0, 25001 )
 GRID2 = ( 0, 5.0, 2501 )
 GRIDF = 401
 
@@ -92,6 +92,7 @@ def getLocalMin( myAr ):
     r, c = myAr.shape
     localMinList = []
     minValueList = []
+    step = 0.1
     for rr in xrange(r):
         if rr <= 1 or rr >= ( r - 2 ):
             continue
@@ -107,6 +108,12 @@ def getLocalMin( myAr ):
             if x00 == np.nanmin( localGrup ):
                 localMinList.append( [rr,cc] )
                 minValueList.append( x00 )
+        
+        counter = rr/float(r)
+        if counter >= step:
+            print "Local min: ", round(step * 100), "%"
+            step += 0.1
+        
     if len( localMinList ) > 0:
         absMin = localMinList[ np.argmin( minValueList ) ]
         return localMinList, tuple( absMin ), minValueList
@@ -130,9 +137,9 @@ def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
     solutionLog = None
     
     ii = 0
+    step = 0.1
     for k1 in k1Ar:
         jj = 0
-        #print "k1 = ", k1
         
         for k2 in k2Ar:
             a, d, a0, S0 = None, None, None, None
@@ -202,6 +209,10 @@ def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
             #    sys.exit()
             
         ii += 1
+        counter = ii/float(k1n)
+        if counter >= step:
+            print "Fit model: ", round(step * 100), "%"
+            step += 0.1
     
     if solutionLog is not None:
         solutionLog.close()
@@ -839,7 +850,7 @@ def efdAnalyse1( directory ):
                 logFit.write("Coeficints: "+str( item )+", "+str(diffYYpNormAr[item])+", "+str(coeffAr[item])+"\r\n" )
             logFit.flush()
             
-            print ii, diffYYpNormAr[idCoeff]
+            print "Seed number, diffYYpNorm", ii, diffYYpNormAr[idCoeff]
             
             plt.figure()
             xAr = np.linspace( gridK2[0], gridK2[1], gridK2[2] )
@@ -885,12 +896,13 @@ def efdAnalyse1( directory ):
             gridD2F = 2.0*( ( gridK2[1] + gridK2[0] ) / ( gridK2[2] - 1 ) )
             gridK1F = ( k1 - gridD1F, k1 + gridD1F, gridF )
             gridK2F = ( k2 - gridD2F, k2 + gridD2F, gridF )
+            print "Dedail"
             diffYYpNormArF, coeffArF = fitModel5( x, y, ii, gridK1F, gridK2F, sigma = None, oneSide = True )
             idCoeffF = np.nanargmin(diffYYpNormArF)
             idCoeffF = np.unravel_index( idCoeffF, diffYYpNormArF.shape )
             S0, a, k1, k2, d, a0 = coeffArF[idCoeffF]
             logFitF.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormArF[idCoeffF], S0, a, k1, k2, d, a0 ) )
-            print ii, diffYYpNormArF[idCoeffF]
+            print "Seed number, diffYYpNormF", ii, diffYYpNormArF[idCoeffF]
             logFitF.flush()
             
             yp = model5( x, S0, a, k1, k2, d, a0 )
