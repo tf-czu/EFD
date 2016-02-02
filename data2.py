@@ -413,20 +413,6 @@ def efdAnalyse1( directory ):
         log = open("logs2/area/extremes_area.txt", "w")
         for ii in xrange(d2):
             y = areaAr[:, ii]
-            #ai, bi = np.polyfit( x[:15], y[:15], 1 )
-            coeffsLine, dp1Time, rSquared, dPoint1 = searchLine( x, y, minTime = 0.5, timeLimit = 10.0 )
-            ai, bi = coeffsLine
-            yn = y/bi
-            an = ai/bi
-            bn = 1.0
-            pi = np.poly1d( [an, bn ] )
-            yi = pi( -x[:offset] )
-            yi = yi[::-1]
-            yn2 = np.zeros( len(y) + offset )
-            yn2[:offset] = yi
-            yn2[offset:] = yn
-            xn2 = np.arange( len(yn2) ) /fph - offset/fph
-            #xn2a, yn2a = getSmoothData2( xn2, yn2, smoothNumA, outlier = True )
             xn2a, yn2a = getSmoothData2( x, y, smoothNumA, outlier = True )
             x2, y2, x3, y3, x4, y4 = myGradient(xn2a, yn2a, lenAG1, lenAG2, lenAG3 )
             plt.figure()
