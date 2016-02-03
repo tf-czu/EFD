@@ -17,8 +17,8 @@ from elliptic_fourier_descriptors import *
 #Constants
 NUMBER_OF_HARMONICS = 20
 SCALE = (19.8, 50.2) #TODO
-#SCALE_NUM = 0
-SCALE_NUM = None
+SCALE_NUM = 0
+#SCALE_NUM = None
 IGNORE_LIST = []
 OUTPUT_FILE = "log.txt"
 COLOR = "b"
@@ -29,10 +29,11 @@ RESIZE = None
 KER1 = 10 #5
 
 CUTING = True
-Xi = 800
-Yi = 350
-Xe = 3400
-Ye = 2700
+Xi = 100
+Yi = 100
+Xe = 3800
+Ye = 2800
+
 
 
 def createLogFile( logFile, efds, cntAreas, referencePoints ):
