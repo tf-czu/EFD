@@ -16,7 +16,7 @@ from elliptic_fourier_descriptors import *
 
 #Constants
 NUMBER_OF_HARMONICS = 20
-SCALE = (19.8, 50.2) #TODO
+SCALE = (9.8, 32.5) #TODO
 SCALE_NUM = 0
 #SCALE_NUM = None
 IGNORE_LIST = []
@@ -26,7 +26,7 @@ TRESCHOLD_VALUE = 140
 COLUMNS = 4
 ROWS = 5
 RESIZE = None
-KER1 = 10 #5
+KER1 = 15 #5
 
 CUTING = True
 Xi = 100
