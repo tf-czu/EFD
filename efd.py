@@ -30,9 +30,9 @@ KER1 = 10 #5
 
 CUTING = True
 Xi = 100
-Yi = 100
-Xe = 3800
-Ye = 2800
+Yi = 200
+Xe = 3900
+Ye = 2600
 
 
 
