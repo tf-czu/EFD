@@ -16,8 +16,8 @@ from elliptic_fourier_descriptors import *
 
 #Constants
 NUMBER_OF_HARMONICS = 20
-SCALE = (19.8, 50.2) #TODO
-SCALE_NUM = 0
+SCALE = (9.8, 32.5) #TODO
+SCALE_NUM = 20
 #SCALE_NUM = None
 IGNORE_LIST = []
 OUTPUT_FILE = "log.txt"
@@ -26,13 +26,13 @@ TRESCHOLD_VALUE = 140
 COLUMNS = 4
 ROWS = 5
 RESIZE = None
-KER1 = 10 #5
+KER1 = 15 #5
 
-CUTING = True
+CUTING = False
 Xi = 100
-Yi = 100
-Xe = 3800
-Ye = 2800
+Yi = 200
+Xe = 3900
+Ye = 2600
 
 
 
@@ -154,6 +154,14 @@ def efdMain( imageFile, n = 6, directory = None ):
     referencePoints2, scalePoint = getCleanList( referencePoints, scaleNum, ignoreList )
     cv2.drawContours(img, contoursList, -1, (0,255,0), 1)
     numCntF = rows * columns
+    if len(contoursList) == 1:
+        print "!!!!!!!!!!----- BLACK IMAGE -----!!!!!!!!!!"
+        biLog = open( directory+"logs/black_images_log.txt", "a" )
+        biLog.write(imageFile+"\r\n")
+        biLog.close()
+        
+        return None
+    
     assert len(contoursList) == numCntF, "len(contoursList) = %d" % len(contoursList)
     
     contoursList, referencePointsxy = sortContoursXY(contoursList, referencePoints2, columns, rows, ) #getting xy sorting
