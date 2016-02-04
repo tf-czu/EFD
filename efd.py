@@ -28,7 +28,7 @@ ROWS = 5
 RESIZE = None
 KER1 = 15 #5
 
-CUTING = True
+CUTING = False
 Xi = 100
 Yi = 200
 Xe = 3900
