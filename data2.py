@@ -1,20 +1,20 @@
 """
   Tools for analyse of logsfiles
     usage:
-         python data.py <switch> <directory>
+         python data.py <switch> <directory> <measurementLabel>
             switch: efd
 """
 
 import sys
 import os
 import numpy as np
-from scipy import optimize
+from scipy import optimize, interpolate
 import matplotlib
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 
 from data import *
-from dara_analysis_tools import *
+from data_analysis_tools import *
 
 
 IGNORE_LIST = []
@@ -36,21 +36,16 @@ LEN_EFD_G2 = 60
 LEN_EFD_G3 = 30
 
 #Fit model 5
-GRID1 = ( 0, 50.0, 25001 )
-GRID2 = ( 0, 5.0, 2501 )
-GRIDF = 401
+GRID1 = ( 0, 10.0, 10001 )
+GRID2 = ( 0, 1.0, 1001 )
+GRIDF = 41
 
 
 createAreaPlots = False
 createAreaPlotsGrad = False
 createAreaDetail = False
 areaAnalyse2 = True
-createEfdsPlotsOrig = False
-createEfdsPlotsGrad1 = False
-createEfdsPlotsGrad2 = False
-createEfdsPlotsPoly = False
-createEfdsPlotsPoly2 = False
-createEfdsPlotsPoly3 = False
+createEfdsPlotsOrig = True
 
 
 #def model5( x, S0, a, k1, k2, d, a0, k0 = 0.001 ):
@@ -380,7 +375,7 @@ def getIdNums( idNumsIn, ignorList ):
     return idNumsOut
 
 
-def efdAnalyse1( directory ):
+def efdAnalyse1( directory, measurementLabel ):
     subject = "efd"
     subject_area = "area"
     ignorList = IGNORE_LIST
@@ -410,7 +405,7 @@ def efdAnalyse1( directory ):
     idNums = getIdNums( range(d2), ignorList )
     
     if createAreaPlotsGrad == True:
-        log = open("logs2/area/extremes_area.txt", "w")
+        log = open("logs2/area/extremes_area_"+measurementLabel+".txt", "w")
         for ii in xrange(d2):
             y = areaAr[:, ii]
             xn2a, yn2a = getSmoothData2( x, y, smoothNumA, outlier = True )
@@ -453,7 +448,7 @@ def efdAnalyse1( directory ):
             plt.close()
             
     if createAreaDetail == True:
-        logD = open("logs2/area/extremes_areaD.txt", "w")
+        logD = open("logs2/area/extremes_areaD_"+measurementLabel+".txt", "w")
         for ii in xrange(d2):
             detailId = detailA * fph
             y = areaAr[0:detailId, ii]
@@ -489,103 +484,92 @@ def efdAnalyse1( directory ):
         logD.close()
         
     if areaAnalyse2 == True:
-        gridK1 = GRID1
+        #gridK1 = GRID1
         gridK2 = GRID2
         gridF = GRIDF
-        logFit = open("logs2/area/log_fit.txt", "w")
+        logFit = open("logs2/area/log_"+measurementLabel+"_fit.txt", "w")
         logFit.write("number seed, value, S0, a, k1, k2, d, a0\r\n")
-        logFitF = open("logs2/area/log_fitF.txt", "w")
+        logFitF = open("logs2/area/log_"+measurementLabel+"_fitF.txt", "w")
         logFitF.write("number seed, value, S0, a, k1, k2, d, a0\r\n")
+        logDI = open("logs2/area/log_"+measurementLabel+"_DI.txt", "w")
+        logDI.write("number seed, y(0), x_max, y(x_max), y(12)\r\n")
+        logDII = open("logs2/area/log_"+measurementLabel+"_DII.txt", "w")
+        logDII.write("number seed, y(0), x_min, y(x_min), y(12)\r\n")
+        logDIN = open("logs2/area/log_"+measurementLabel+"_DIN.txt", "w")
+        logDIN.write("number seed, y(0), x_max, y(x_max), y(12)\r\n")
+        logDIIN = open("logs2/area/log_"+measurementLabel+"_DIIN.txt", "w")
+        logDIIN.write("number seed, y(0), x_min, y(x_min), y(12)\r\n")
         print areaAr.shape
             
         for ii in xrange(d2):
-            if ii in [ 10, 12, 16 ]:
+            if ii not in [ 0, 1, 4, 8, 9, 14, 17 ]:
+                pass
                 ##gridK1 = ( 0, 10.0, 10001 )
                 ##gridK2 = ( 0, 10.0, 10001 )
-                continue
+                #continue
             y = areaAr[:, ii]
             #sigma = np.ones( y.shape )[300:] = 2.0
-            y = y[0:300]
-            x = x[0:300]
-            diffYYpNormAr, coeffAr = fitModel5( x, y, ii, gridK1, gridK2, sigma = None, oneSide = True )
-            #np.savetxt("diffYYpNormAr", diffYYpNormAr)
-            #np.savetxt("coeffAr", coeffAr)
+            y = y[0:360]
+            x = x[0:360]
             
-            #diffYYpNormArA, diffYYpNormArB = divideMatrix( diffYYpNormAr )
-            #idCoeffA = np.nanargmin(diffYYpNormArA)
-            #idCoeffB = np.nanargmin(diffYYpNormArB)
-            #idCoeffA = np.unravel_index( idCoeffA, diffYYpNormAr.shape )
-            #idCoeffB = np.unravel_index( idCoeffB, diffYYpNormAr.shape )
-            #S0A, aA, k1A, k2A, dA, a0A = coeffAr[idCoeffA]
-            #S0B, aB, k1B, k2B, dB, a0B = coeffAr[idCoeffB]
-            #ypA = model5( x, S0A, aA, k1A, k2A, dA, a0A )
-            #ypB = model5( x, S0B, aB, k1B, k2B, dB, a0B )
+            print "--------------------------------------------------------"
+            print "Seed number: ", ii
             
-            idCoeff = np.nanargmin( diffYYpNormAr )
-            idCoeff = np.unravel_index( idCoeff, diffYYpNormAr.shape )
+            gridK1 = GRID1
+            while True:
+                diffYYpNormAr, coeffAr = fitModel5( x, y, ii, gridK1, gridK2, sigma = None, oneSide = True )
+            
+                idCoeff = np.nanargmin( diffYYpNormAr )
+                idCoeff = np.unravel_index( idCoeff, diffYYpNormAr.shape )
+                if idCoeff[0] > gridK1[2] - 10:
+                    gd = ( ( gridK1[1] - gridK1[0] ) / ( gridK1[2] - 1 ) )
+                    gridK1 = ( gridK1[1] - 10*gd, gridK1[1] + 1, 1/gd + 1 + 10 )
+                    print "gd", gd
+                    print "New gridK1: ", gridK1
+                else:
+                    break
+                
             print "abs min: ", idCoeff, diffYYpNormAr[idCoeff]
-            localMinList, absMin, minValueList = getLocalMin( diffYYpNormAr )
-            if absMin is None:
-                print "The local minimum was not found!"
-                logFit.write("%d, No local minimum! The minimum value: %f in (%d, %d)\r\n" %( ii, diffYYpNormAr[idCoeff], idCoeff[0], idCoeff[1] ) )
-                logFit.flush()
-                continue
-            
-            idCoeff = absMin
-            print "localMinList, absMin, minValueList", localMinList, absMin, minValueList
-            S0, a, k1, k2, d, a0 = coeffAr[idCoeff]
-            
-            #logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffA], S0A, aA, k1A, k2A, dA, a0A ) )
-            #logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffB], S0B, aB, k1B, k2B, dB, a0B ) )
-            logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeff], S0, a, k1, k2, d, a0 ) )
-            logFit.flush()
-            for item in localMinList:
-                item = tuple(item)
-                print "Coeficints: ", item, diffYYpNormAr[item], coeffAr[item]
-                logFit.write("Coeficints: "+str( item )+", "+str(diffYYpNormAr[item])+", "+str(coeffAr[item])+"\r\n" )
-            logFit.flush()
-            
-            print "Seed number, diffYYpNorm", ii, diffYYpNormAr[idCoeff]
             
             plt.figure()
             xAr = np.linspace( gridK2[0], gridK2[1], gridK2[2] )
             yAr = np.linspace( gridK1[0], gridK1[1], gridK1[2] )
             plt.contourf( xAr, yAr, diffYYpNormAr, 200 )
-            plt.savefig("logs2/area/tmp/diffYYp_%003d" %ii, dpi=500)
+            plt.savefig("logs2/area/tmp/diffYYp_"+measurementLabel+"_%003d" %ii, dpi=500)
             plt.clf
             plt.close()
             
-            maxValueIm = diffYYpNormAr[idCoeff] + 100.0
+            maxValueIm = diffYYpNormAr[idCoeff] + ( np.nanmax(diffYYpNormAr) - diffYYpNormAr[idCoeff] )*0.1
             dataForDetail = diffYYpNormAr
             dataForDetail[ dataForDetail > maxValueIm ] = np.nan
             plt.contourf( xAr, yAr, dataForDetail, 100 )
-            plt.savefig("logs2/area/tmp/diffYYp_%003d_D" %ii, dpi=500)
+            plt.savefig("logs2/area/tmp/diffYYp_"+measurementLabel+"_%003d_D" %ii, dpi=500)
             plt.clf
             plt.close()
             
-            #if k1A != k2B:
-                #print "!!!k1A != k2B!!!"
-                #print "%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffA], S0A, aA, k1A, k2A, dA, a0A )
-                #print "%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeffB], S0B, aB, k1B, k2B, dB, a0B )
-                #continue
+            if idCoeff[1] == 1:
+                print "The abs min is dubious!"
+                S0, a, k1, k2, d, a0 = coeffAr[idCoeff]
+                logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeff], S0, a, k1, k2, d, a0 ) )
+                logFit.flush()
                 
-            #if k1A == gridK1[1]:
-                #gridK12 = gridK1
-                #k1A2 = k1A
-                #while k1A2 == gridK12[1]:
-                    #gridK12 = ( k1A, k1A2 + 1.0, 1001 )
-                    #diffYYpNormAr2, coeffAr2 = fitModel5( x, y, ii, gridK12, gridK2 )
-                    #idCoeffA2 = np.nanargmin(diffYYpNormAr2)
-                    #idCoeffA2 = np.unravel_index( idCoeffA2, diffYYpNormAr2.shape )
-                    #S0A2, aA2, k1A2, k2A2, dA2, a0A2 = coeffAr2[idCoeffA2]
-                    #logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr2[idCoeffA2], S0A2, aA2, k1A2, k2A2, dA2, a0A2 ) )
-                    #print "+",ii, diffYYpNormAr2[idCoeffA2]
-                    #logFit.flush()
-                #k1 = k1A2
-                #k2 = k2A2
-            #else:
-                #k1 = k1A
-                #k2 = k2A
+                plt.figure()
+                plt.plot(x,y,"k")
+                plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d" %ii, dpi=200 )
+                plt.clf
+                plt.close()
+                
+                plt.figure()
+                plt.plot(x,y/S0,"k")
+                plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003dN" %ii, dpi=200 )
+                plt.clf
+                plt.close()
+                
+                continue
+            
+            S0, a, k1, k2, d, a0 = coeffAr[idCoeff]
+            logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeff], S0, a, k1, k2, d, a0 ) )
+            logFit.flush()
             
             gridD1F = 2.0*( ( gridK1[1] + gridK1[0] ) / ( gridK1[2] - 1 ) )
             gridD2F = 2.0*( ( gridK2[1] + gridK2[0] ) / ( gridK2[2] - 1 ) )
@@ -601,21 +585,84 @@ def efdAnalyse1( directory ):
             logFitF.flush()
             
             yp = model5( x, S0, a, k1, k2, d, a0 )
+            ypDI = model5DI( x, a, k1, k2, d, a0 )
+            ypDII = model5DII( x, a, k1, k2, d )
+            
+            yN = y/S0
+            ypN = model5( x, 1, a/S0, k1, k2, d, a0/S0 )
+            ypDIN = model5DI( x, a/S0, k1, k2, d, a0/S0 )
+            ypDIIN = model5DII( x, a/S0, k1, k2, d )
+            
+            if k2 <= k1*d:
+                xMaxDI = -1
+                xMinDII = -1
+                yXmaxDI = -1
+                yXminDII = -1
+                yXmaxDIN = -1
+                yXminDIIN = -1
+            else:
+                xMaxDI = np.log( ( -k2**2 * ( 1 - d ) ) / ( k1*(k1*d - k2) ) ) / ( k2 - k1 )
+                yXmaxDI = model5DI(xMaxDI, a, k1, k2, d, a0)
+                yXmaxDIN = model5DI(xMaxDI, a/S0, k1, k2, d, a0/S0)
+                #print yXmaxDI
+                
+                xMinDII = np.log( ( k2**3 * ( 1 - d ) ) / ( k1**2 *(k2 - k1*d) ) ) / ( k2 - k1 )
+                yXminDII = model5DII(xMinDII, a, k1, k2, d )
+                yXminDIIN = model5DII(xMinDII, a/S0, k1, k2, d )
+                #print yXminDII
+                            
+            logDI.write("%d, %f, %f, %f, %f\r\n" %(ii, ypDI[0], xMaxDI, yXmaxDI, ypDI[359] ) )
+            logDI.flush()
+            logDII.write("%d, %f, %f, %f, %f\r\n" %(ii, ypDII[0], xMinDII, yXminDII, ypDII[359] ) )
+            logDII.flush()
+            logDIN.write("%d, %f, %f, %f, %f\r\n" %(ii, ypDIN[0], xMaxDI, yXmaxDIN, ypDIN[359] ) )
+            logDIN.flush()
+            logDIIN.write("%d, %f, %f, %f, %f\r\n" %(ii, ypDIIN[0], xMinDII, yXminDIIN, ypDIIN[359] ) )
+            logDIIN.flush()
+            
             plt.figure()
             plt.plot(x,y,"k")
             plt.plot(x,yp,"r")
-            plt.savefig( "logs2/area/area_Plot_fit_%003d-F" %ii, dpi=200 )
+            if xMaxDI != -1.0:
+                plt.plot( [xMaxDI, xMaxDI], [np.min(y), np.max(y)], "b")
+                plt.plot( [xMinDII, xMinDII], [np.min(y), np.max(y)], "g")
+            plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-F" %ii, dpi=200 )
             plt.clf
             plt.close()
             
-            ypDI = model5DI( x, a, k1, k2, d, a0 )
-            ypDII = model5DII( x, a, k1, k2, d )
             plt.figure()
-            plt.plot(x,ypDI,"r")
-            plt.plot(x,ypDII,"b")
-            plt.savefig( "logs2/area/area_Plot_fit_%003d-FD" %ii, dpi=200 )
+            plt.plot(x,ypDI,"b")
+            plt.plot(x,ypDII,"g")
+            plt.plot( [0, 12], [0, 0], "k")
+            if xMaxDI != -1.0:
+                plt.plot( [xMaxDI, xMaxDI], [0, yXmaxDI], "b")
+                plt.plot( [xMinDII, xMinDII], [0, yXminDII], "g")
+            plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-FD" %ii, dpi=200 )
             plt.clf
             plt.close()
+            
+            plt.figure()
+            plt.plot(x,yN,"k")
+            plt.plot(x,ypN,"r")
+            if xMaxDI != -1.0:
+                plt.plot( [xMaxDI, xMaxDI], [np.min(yN), np.max(yN)], "b")
+                plt.plot( [xMinDII, xMinDII], [np.min(yN), np.max(yN)], "g")
+            plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-FN" %ii, dpi=200 )
+            plt.clf
+            plt.close()
+            
+            plt.figure()
+            plt.plot(x,ypDIN,"b")
+            plt.plot(x,ypDIIN,"g")
+            plt.plot( [0, 12], [0, 0], "k")
+            if xMaxDI != -1.0:
+                plt.plot( [xMaxDI, xMaxDI], [0, yXmaxDIN], "b")
+                plt.plot( [xMinDII, xMinDII], [0, yXminDIIN], "g")
+            plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-FDN" %ii, dpi=200 )
+            plt.clf
+            plt.close()
+            
+            
             
             #initEs5 = np.array([ y[0], 2000.0, 0.2, 0.1, 0.0, 1000.0 ])
             ##sigma = None
@@ -646,107 +693,64 @@ def efdAnalyse1( directory ):
             #plt.close()
             
             
-        sys.exit()
     
     kk = 0
     for item in efdsCoeff:
         plotLimits = [ np.min( efds[:, :, item] ), np.max( efds[:, :, item] ) ]
         dataOutP = dataOutPut[kk]
+        spl = interpolate.UnivariateSpline
+        
+        logResults = open("logs2/"+dataOutP+"/log_"+measurementLabel+"_results.txt", "w")
+        logResults.write("Seed ID, y(0), y(12), Line a, Line b, Line R2, X_max, Y_max, X_min, Y_min\r\n")
+        logExtrems = open("logs2/"+dataOutP+"/log_"+measurementLabel+"_Extrems.txt", "w")
+        
         if createEfdsPlotsOrig == True:
             for ii in xrange(d2):
                 y = efds[:, ii, item]
+                y = y[0:360]
+                x = x[0:360]
+                ys = spl(x, y, k = 4)
+                ysDII = ys.derivative(2)
+                xD0 = ys.derivative().roots()
+                yD0 = ys(xD0)
+                extremType = ysDII(xD0) #x<0 - max; x>0 - min
+                minimums = []
+                maximums = []
+                for jj in range(len(xD0)):
+                    if extremType[jj] < 0:
+                        maximums.append( [ xD0[jj], yD0[jj] ] )
+                    else:
+                        minimums.append( [ xD0[jj], yD0[jj] ] )
+                
+                yp, rSquared, coeffs = dataPolyFit( x, y, 1, returnCoeffs = True )
+                yData = ys(x)
+                xMin = ( np.argmin(yData) + 1 )/fph
+                yMin = np.min(yData)
+                xMax = ( np.argmax(yData) + 1 )/fph
+                yMax = np.max(yData)
+                
+                logResults.write("%d, %f, %f, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, yData[0], yData[359], coeffs[0], coeffs[1], rSquared, xMax, yMax, xMin, yMin ) )
+                logResults.flush()
+                logExtrems.write(str(ii)+", maximums, "+str(maximums)+", minimums, "+str(minimums)+"\r\n")
+                logExtrems.flush()
+                
                 plt.figure()
                 plt.plot( x, y, "ko-")
+                plt.plot( x, ys(x), "r-")
+                plt.plot( x, yp, "m-" )
+                for extrem in maximums:
+                    plt.plot(extrem[0], extrem[1], "bo")
+                for extrem in minimums:
+                    plt.plot(extrem[0], extrem[1], "go")
                 plt.ylim( plotLimits[0], plotLimits[1] )
                 plt.title("item num.: "+str(ii))
-                plt.savefig("logs2/"+dataOutP+"/efds_Plot_%003d" %ii, dpi=100)
+                plt.savefig("logs2/"+dataOutP+"/efds_"+measurementLabel+"_Plot_%003d" %ii, dpi=100)
                 plt.clf
                 plt.close()
+                #sys.exit()
                 
-        if createEfdsPlotsGrad1 == True:
-            #length1 = 12
-            #length2 = 12
-            for ii in xrange(d2):
-                y = efds[:, ii, item ]
-                
-                x1, y1 = getSmoothData2( x, y, smoothNumA, outlier = True )
-                x2, y2, x3, y3, x4, y4 = myGradient(x1, y1, lenG1, lenG2, lenG3 )
-                plt.figure()
-                plt.plot(x2, y2, "ro-" )
-                plt.plot(x3, y3, "b-" )
-                plt.plot([0, n/fph], [0, 0], "g-")
-                plt.title("item num.: "+str(ii))
-                plt.savefig("logs2/"+dataOutP+"/efds_Plot_%003d_grad" %ii, dpi=100)
-                plt.close()
-                plt.figure()
-                plt.plot(x3, y3, "bo-" )
-                plt.plot(x4, y4, "k-" )
-                plt.plot([0, n/fph], [0, 0], "g-")
-                plt.title("item num.: "+str(ii))
-                plt.savefig("logs2/"+dataOutP+"/efds_Plot_%003d_grad2" %ii, dpi=100)
-                plt.close()
-                
-            
-        if createEfdsPlotsGrad2 == True:
-            length1 = 24
-            length2 = 12
-            for ii in xrange(d2):
-                y = efds[:, ii, item ]
-                plt.figure()
-                x1, y1, x2, y2, x3, y3 = myGradient( x, y, length1, length2 )
-                x1 = x1 * 1/fph
-                x2 = x2 * 1/fph
-                #print x1
-                plt.plot( x1, y1, "ro-")
-                plt.plot( x2, y2, "b-")
-                plt.plot([0, n/fph], [0, 0], "g-")
-                
-                plt.title("item num.: "+str(ii))
-                plt.savefig("logs2/"+dataOutP+"/efds_Plot_%003d_grad24-12" %ii, dpi=100)
-                plt.clf
-                plt.close()
-                
-        if createEfdsPlotsPoly == True:
-            degree = DEGREE
-            for ii in xrange(d2):
-                y = efds[:, ii, item]
-                x1, y1 = getSmoothData2( x, y, smoothNumA, outlier = True )
-                plt.figure()
-                plt.plot( x, y, "ko-")
-                plt.plot( x1, y1, "b-")
-                yp, coefficients = dataPolyFit( x1, y1, degree )
-                plt.plot( x1, yp, "r-")
-                plt.title("item num.: "+str(ii))
-                plt.savefig("logs2/"+dataOutP+"/efds_Plot_%003d_poly" %ii, dpi=100)
-                plt.clf
-                plt.close()
         
-        if createEfdsPlotsPoly2 == True:
-            degree = 4
-            for ii in xrange(d2):
-                y = efds[:, ii, item]
-                plt.figure()
-                plt.plot( x, y, "ko-")
-                yp, coefficients = dataPolyFit( x, y, degree )
-                plt.plot( x, yp, "r-")
-                plt.title("item num.: "+str(ii))
-                plt.savefig("logs2/"+dataOutP+"/efds_Plot_%003d_poly2" %ii, dpi=100)
-                plt.clf
-                plt.close()
         
-        if createEfdsPlotsPoly3 == True:
-            degree = 6
-            for ii in xrange(d2):
-                y = efds[:, ii, item]
-                plt.figure()
-                plt.plot( x, y, "ko-")
-                yp, coefficients = dataPolyFit( x, y, degree )
-                plt.plot( x, yp, "r-")
-                plt.title("item num.: "+str(ii))
-                plt.savefig("logs2/"+dataOutP+"/efds_Plot_%003d_poly6" %ii, dpi=100)
-                plt.clf
-                plt.close()
-            
         kk += 1
             
 
@@ -756,9 +760,10 @@ if __name__ == "__main__":
         sys.exit(1)
     
     print "ignore list", IGNORE_LIST
+    measurementLabel = sys.argv[3]
     directory = sys.argv[2]
     switch = sys.argv[1]
     if switch == "efd":
-        efdAnalyse1( directory )
+        efdAnalyse1( directory, measurementLabel )
         
     print "END"

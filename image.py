@@ -13,10 +13,10 @@ from matplotlib import pyplot as plt
 from contours import *
 
 CUTING = True
-Xi = 800
-Yi = 350
-Xe = 3400
-Ye = 2700
+Xi = 100
+Yi = 200
+Xe = 3900
+Ye = 2600
 
 
 def cutImage(img, xi, yi, xe, ye, imShow = False ):
@@ -113,7 +113,7 @@ def imageMain( imageFile, tresh, color, cuting = True ):
     getHist( gray )
     if tresh:
         binaryImg = getThreshold( gray, tresh )
-        binaryImg2 = openingClosing( binaryImg, ker1 = 5, ker2 = None )
+        binaryImg2 = openingClosing( binaryImg, ker1 = 15, ker2 = None )
         
         newImgName = imageFile.split(".")[0]+"_test.png"
         newImgName2 = imageFile.split(".")[0]+"_test2.png"
