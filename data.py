@@ -31,10 +31,14 @@ def getEfdCoefficient(num):
     
 
 def readData( fileList, directory, subject, ignorList ):
+    #fileList = fileList.sort()
     if subject == "area":
         fileIdList = []
         areaList = []
         for fileN in fileList:
+            if fileN == "black_images_log.txt":
+                print fileN
+                continue
             #print fileN
             fId = fileN.split("_")[1]
             fId = int(fId) - 1
@@ -58,7 +62,10 @@ def readData( fileList, directory, subject, ignorList ):
         
         #print fileIdList
         areaList = np.array(areaList)
-        areaAr = np.zeros( (areaList.shape) )
+        maxFId = max(fileIdList) +1
+        s1, s2 = areaList.shape
+        areaAr = np.empty( [ maxFId, s2 ] )
+        areaAr.fill(np.nan)
         
         ii = 0
         for fId in fileIdList:
@@ -71,7 +78,9 @@ def readData( fileList, directory, subject, ignorList ):
         fileIdList = []
         totalEfdList = []
         for fileN in fileList:
-            #print fileN
+            if fileN == "black_images_log.txt":
+                print fileN
+                continue
             fId = fileN.split("_")[1]
             fId = int(fId) - 1
             fileIdList.append(fId)
@@ -109,7 +118,10 @@ def readData( fileList, directory, subject, ignorList ):
             totalEfdList.append(efdList)
             
         totalEfdList = np.array(totalEfdList)
-        totalEfdArS = np.zeros( totalEfdList.shape )
+        maxFId = max(fileIdList) +1
+        s1, s2, s3 = totalEfdList.shape
+        totalEfdArS = np.empty( [ maxFId, s2, s3 ] )
+        totalEfdArS.fill(np.nan)
         ii = 0
         for fId in fileIdList:
             totalEfdArS[fId] = totalEfdList[ii]

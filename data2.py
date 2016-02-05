@@ -55,6 +55,7 @@ def model5( x, S0, a, k1, k2, d, a0 ):
     return S0 + a + a/( k1 - k2 ) * ( ( k2 - k1*d )* np.exp(-k1*x ) - k1*( 1 - d )* np.exp(-k2*x ) ) + a0*x
 
 def model5a( x, a, k1, k2 ):
+    #print "model5a x: ", x
     return a*( 1 + 1/( k1-k2 ) * ( np.exp(-k1*x )*k2 - k1*np.exp(-k2*x ) ) )
     
 def model5ad( x, ad, k1, k2 ):
@@ -72,6 +73,22 @@ def model5DI( x, a, k1, k2, d, a0 ):
 def model5DII( x, a, k1, k2, d ):
     return -a*k1/( k1 -k2 ) * ( k1*( -k2 + k1*d )* np.exp(-k1*x ) + k2**2 *( 1 - d )* np.exp(-k2*x ) )
 
+
+def removeNan( x, y ):
+    newX = []
+    newY = []
+    for ii in xrange(len(y)):
+        if np.isnan(y[ii]):
+            #print y[ii]
+            continue
+        else:
+            newX.append(x[ii])
+            newY.append(y[ii])
+            
+    x = np.array(newX)
+    y = np.array(newY)
+    
+    return x, y
 
 
 def divideMatrix( myArr ):
@@ -131,6 +148,20 @@ def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
     diffYYpNormAr = np.zeros( ( k1n, k2n ) )
     coeffAr = np.zeros( ( k1n, k2n, 6 ) )
     solutionLog = None
+    #newX = []
+    #newY = []
+    #for ii in xrange(len(y)):
+        #if np.isnan(y[ii]):
+            ##print y[ii]
+            #continue
+        #else:
+            #newX.append(x[ii])
+            #newY.append(y[ii])
+            
+    #x = np.array(newX)
+    #y = np.array(newY)
+    
+    x, y = removeNan( x, y )
     
     ii = 0
     step = 0.1
@@ -511,6 +542,7 @@ def efdAnalyse1( directory, measurementLabel ):
             #sigma = np.ones( y.shape )[300:] = 2.0
             y = y[0:360]
             x = x[0:360]
+            print "len(x)", len(x)
             
             print "--------------------------------------------------------"
             print "Seed number: ", ii
@@ -523,7 +555,7 @@ def efdAnalyse1( directory, measurementLabel ):
                 idCoeff = np.unravel_index( idCoeff, diffYYpNormAr.shape )
                 if idCoeff[0] > gridK1[2] - 10:
                     gd = ( ( gridK1[1] - gridK1[0] ) / ( gridK1[2] - 1 ) )
-                    gridK1 = ( gridK1[1] - 10*gd, gridK1[1] + 1, 1/gd + 1 + 10 )
+                    gridK1 = ( gridK1[1] - 10*gd, gridK1[1] + 1, int(1/gd + 1 + 10) )
                     print "gd", gd
                     print "New gridK1: ", gridK1
                 else:
@@ -624,8 +656,8 @@ def efdAnalyse1( directory, measurementLabel ):
             plt.plot(x,y,"k")
             plt.plot(x,yp,"r")
             if xMaxDI != -1.0:
-                plt.plot( [xMaxDI, xMaxDI], [np.min(y), np.max(y)], "b")
-                plt.plot( [xMinDII, xMinDII], [np.min(y), np.max(y)], "g")
+                plt.plot( [xMaxDI, xMaxDI], [np.nanmin(y), np.nanmax(y)], "b")
+                plt.plot( [xMinDII, xMinDII], [np.nanmin(y), np.nanmax(y)], "g")
             plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-F" %ii, dpi=200 )
             plt.clf
             plt.close()
@@ -645,8 +677,8 @@ def efdAnalyse1( directory, measurementLabel ):
             plt.plot(x,yN,"k")
             plt.plot(x,ypN,"r")
             if xMaxDI != -1.0:
-                plt.plot( [xMaxDI, xMaxDI], [np.min(yN), np.max(yN)], "b")
-                plt.plot( [xMinDII, xMinDII], [np.min(yN), np.max(yN)], "g")
+                plt.plot( [xMaxDI, xMaxDI], [np.nanmin(yN), np.nanmax(yN)], "b")
+                plt.plot( [xMinDII, xMinDII], [np.nanmin(yN), np.nanmax(yN)], "g")
             plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-FN" %ii, dpi=200 )
             plt.clf
             plt.close()
@@ -696,7 +728,7 @@ def efdAnalyse1( directory, measurementLabel ):
     
     kk = 0
     for item in efdsCoeff:
-        plotLimits = [ np.min( efds[:, :, item] ), np.max( efds[:, :, item] ) ]
+        plotLimits = [ np.nanmin( efds[:, :, item] ), np.nanmax( efds[:, :, item] ) ]
         dataOutP = dataOutPut[kk]
         spl = interpolate.UnivariateSpline
         
@@ -706,9 +738,13 @@ def efdAnalyse1( directory, measurementLabel ):
         
         if createEfdsPlotsOrig == True:
             for ii in xrange(d2):
+                #print "len(x)", len(x)
                 y = efds[:, ii, item]
+                x = ( np.arange(d1) ) * 1/fph
                 y = y[0:360]
                 x = x[0:360]
+                x, y = removeNan( x, y )
+                
                 ys = spl(x, y, k = 4)
                 ysDII = ys.derivative(2)
                 xD0 = ys.derivative().roots()
@@ -729,7 +765,7 @@ def efdAnalyse1( directory, measurementLabel ):
                 xMax = ( np.argmax(yData) + 1 )/fph
                 yMax = np.max(yData)
                 
-                logResults.write("%d, %f, %f, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, yData[0], yData[359], coeffs[0], coeffs[1], rSquared, xMax, yMax, xMin, yMin ) )
+                logResults.write("%d, %f, %f, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, yData[0], yData[-1], coeffs[0], coeffs[1], rSquared, xMax, yMax, xMin, yMin ) )
                 logResults.flush()
                 logExtrems.write(str(ii)+", maximums, "+str(maximums)+", minimums, "+str(minimums)+"\r\n")
                 logExtrems.flush()
