@@ -36,9 +36,10 @@ LEN_EFD_G2 = 60
 LEN_EFD_G3 = 30
 
 #Fit model 5
-GRID1 = ( 0, 10.0, 10001 )
-GRID2 = ( 0, 1.0, 1001 )
-GRIDF = 41
+GRID0 = ( -0.199, 0.201, 21 )
+GRID1 = ( 0, 6.0, 301 )
+GRID2 = ( 0, 2.0, 101 )
+GRIDF = 101
 
 
 createAreaPlots = False
@@ -53,6 +54,9 @@ createEfdsPlotsOrig = True
   
 def model5( x, S0, a, k1, k2, d, a0 ):
     return S0 + a + a/( k1 - k2 ) * ( ( k2 - k1*d )* np.exp(-k1*x ) - k1*( 1 - d )* np.exp(-k2*x ) ) + a0*x
+    
+def model55( x, S0, a, k1, k2, d, a0, k0 ):
+    return S0 + a + a/( k1 - k2 ) * ( ( k2 - k1*d )* np.exp(-k1*x ) - k1*( 1 - d )* np.exp(-k2*x ) ) + a0*( np.exp( -k0*x ) -1 )
 
 def model5a( x, a, k1, k2 ):
     #print "model5a x: ", x
@@ -61,8 +65,8 @@ def model5a( x, a, k1, k2 ):
 def model5ad( x, ad, k1, k2 ):
     return ad*k1/( k1-k2 ) * ( np.exp(-k2*x ) - np.exp(-k1*x ) )
     
-#def model5a0( x, a0, k0 ):
-#    return a0*( np.exp( k0*x ) -1 )
+def model55a0( x, a0, k0 ):
+    return a0*( np.exp( -k0*x ) -1 )
     
 def model5a0( x, a0 ):
     return a0*x
@@ -70,8 +74,14 @@ def model5a0( x, a0 ):
 def model5DI( x, a, k1, k2, d, a0 ):
     return -a*k1/( k1 -k2 ) * ( ( k2 - k1*d )* np.exp(-k1*x ) - k2*( 1 - d )* np.exp(-k2*x ) ) + a0
     
+def model55DI( x, a, k1, k2, d, a0, k0 ):
+    return -a*k1/( k1 -k2 ) * ( ( k2 - k1*d )* np.exp(-k1*x ) - k2*( 1 - d )* np.exp(-k2*x ) ) - a0*k0*np.exp(-k0*x )
+    
 def model5DII( x, a, k1, k2, d ):
     return -a*k1/( k1 -k2 ) * ( k1*( -k2 + k1*d )* np.exp(-k1*x ) + k2**2 *( 1 - d )* np.exp(-k2*x ) )
+
+def model55DII( x, a, k1, k2, d, a0, k0 ):
+    return -a*k1/( k1 -k2 ) * ( k1*( -k2 + k1*d )* np.exp(-k1*x ) + k2**2 *( 1 - d )* np.exp(-k2*x ) ) + a0*k0**2 *np.exp(-k0*x )
 
 
 def removeNan( x, y ):
@@ -171,7 +181,7 @@ def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
         for k2 in k2Ar:
             a, d, a0, S0 = None, None, None, None
             diffYYpNorm = None
-            if k2 == 0 or k1 == 0:
+            if k2 <= 0 or k1 <= 0:
                 diffYYpNormAr[ii,jj] = None
                 coeffAr[ii,jj] = None
                 jj += 1
@@ -240,6 +250,110 @@ def fitModel5( x, y, seedId, gridK1, gridK2, sigma = None, oneSide = False ):
         if counter >= step:
             print "Fit model: ", round(step * 100), "%"
             step += 0.1
+    
+    if solutionLog is not None:
+        solutionLog.close()
+    
+    return diffYYpNormAr, coeffAr
+    
+
+def fitModel55( x, y, seedId, gridK1, gridK2, gridK0, sigma = None, oneSide = False ):#TODO
+    k1f = gridK1[0]
+    k1l = gridK1[1]
+    k2f = gridK2[0]
+    k2l = gridK2[1]
+    k1n = gridK1[2]
+    k2n = gridK2[2]
+    k0f = gridK0[0]
+    k0l = gridK0[1]
+    k0n = gridK0[2]
+    k1Ar = np.linspace( k1f, k1l, k1n )
+    k2Ar = np.linspace( k2f, k2l, k2n )
+    k0Ar = np.linspace( k0f, k0l, k0n )
+    diffYYpNormAr = np.zeros( ( k0n, k1n, k2n ) )
+    coeffAr = np.zeros( ( k0n, k1n, k2n, 7 ) )
+    solutionLog = None
+    x, y = removeNan( x, y )
+    
+    kk = 0
+    for k0 in k0Ar:
+        print ""
+        print "k0 = ", k0
+        ii = 0
+        step = 0.1
+        for k1 in k1Ar:
+            jj = 0
+            
+            for k2 in k2Ar:
+                a, d, a0, S0 = None, None, None, None
+                diffYYpNorm = None
+                if k2 <= 0 or k1 <= 0:
+                    diffYYpNormAr[kk,ii,jj] = None
+                    coeffAr[kk,ii,jj] = None
+                    jj += 1
+                    continue
+                    
+                if k1 == k2:
+                    diffYYpNormAr[kk,ii,jj] = None
+                    coeffAr[kk,ii,jj] = None
+                    jj += 1
+                    continue
+                
+                if oneSide == True and k1 < k2:
+                    diffYYpNormAr[kk,ii,jj] = None
+                    coeffAr[kk,ii,jj] = None
+                    jj += 1
+                    continue
+                    
+                partA = model5a( x, 1, k1, k2 )
+                partAD = model5ad( x, 1, k1, k2 )
+                partA0 = model55a0( x, 1, k0 )
+                partList = [ partA, partAD, partA0, np.ones( len(x) ) ]
+                A = np.zeros( [4,4] )
+                B = np.zeros([4,1])
+                for rr in range(4):
+                    for cc in range(4):
+                        A[rr, cc] =  np.sum( np.multiply( partList[rr], partList[cc] ) )
+                for rr in range(4):
+                    B[rr, 0] = np.sum( np.multiply( y, partList[rr] ) )
+                
+                try:
+                    X = np.linalg.solve(A, B)
+                except:
+                    if solutionLog is None:
+                        slogName = "logs2/area/solutinLog"+str(seedId)+".txt"
+                        solutionLog = open( slogName, "w")
+                        solutionLog.write( "ii, jj, k1, k2, k0\r\n" )
+                        print "The solutinLog was created!"
+                        
+                    solutionLog.write("%d, %d, %f, %f, %f\r\n" % ( ii, jj, k1, k2, k0 ) )
+                    diffYYpNormAr[kk,ii,jj] = None
+                    coeffAr[kk,ii,jj] = None
+                    jj += 1
+                    continue
+                    
+                #print X
+                a, ad, a0, S0 = X
+                d = ad/a
+                coeffAr[kk,ii,jj] = S0, a, k1, k2, d, a0, k0
+                yp = model55( x, S0, a, k1, k2, d, a0, k0 )
+                diff = y - yp
+                if sigma is not None:
+                    diff = diff/sigma
+                diffYYpNorm = np.linalg.norm( diff )
+                #print diffYYpNorm
+                diffYYpNormAr[kk,ii,jj] = diffYYpNorm
+                
+                jj += 1
+                #if ii > 20:
+                #    sys.exit()
+                
+            ii += 1
+            counter = ii/float(k1n)
+            if counter >= step:
+                print "Fit model: ", round(step * 100), "%"
+                step += 0.1
+        kk += 1
     
     if solutionLog is not None:
         solutionLog.close()
@@ -517,11 +631,12 @@ def efdAnalyse1( directory, measurementLabel ):
     if areaAnalyse2 == True:
         #gridK1 = GRID1
         gridK2 = GRID2
+        gridK0 = GRID0
         gridF = GRIDF
         logFit = open("logs2/area/log_"+measurementLabel+"_fit.txt", "w")
-        logFit.write("number seed, value, S0, a, k1, k2, d, a0\r\n")
+        logFit.write("number seed, value, S0, a, k1, k2, d, a0, k0\r\n")
         logFitF = open("logs2/area/log_"+measurementLabel+"_fitF.txt", "w")
-        logFitF.write("number seed, value, S0, a, k1, k2, d, a0\r\n")
+        logFitF.write("number seed, value, S0, a, k1, k2, d, a0, k0\r\n")
         logDI = open("logs2/area/log_"+measurementLabel+"_DI.txt", "w")
         logDI.write("number seed, y(0), x_max, y(x_max), y(12)\r\n")
         logDII = open("logs2/area/log_"+measurementLabel+"_DII.txt", "w")
@@ -533,15 +648,15 @@ def efdAnalyse1( directory, measurementLabel ):
         print areaAr.shape
             
         for ii in xrange(d2):
-            if ii not in [ 0, 1, 4, 8, 9, 14, 17 ]:
+            if ii not in [ 1, 12, 17 ]:
                 pass
                 ##gridK1 = ( 0, 10.0, 10001 )
                 ##gridK2 = ( 0, 10.0, 10001 )
                 #continue
             y = areaAr[:, ii]
             #sigma = np.ones( y.shape )[300:] = 2.0
-            y = y[0:360]
-            x = x[0:360]
+            #y = y[0:420]
+            #x = x[0:420]
             print "len(x)", len(x)
             
             print "--------------------------------------------------------"
@@ -549,11 +664,11 @@ def efdAnalyse1( directory, measurementLabel ):
             
             gridK1 = GRID1
             while True:
-                diffYYpNormAr, coeffAr = fitModel5( x, y, ii, gridK1, gridK2, sigma = None, oneSide = True )
+                diffYYpNormAr, coeffAr = fitModel55( x, y, ii, gridK1, gridK2, gridK0, sigma = None, oneSide = True )
             
                 idCoeff = np.nanargmin( diffYYpNormAr )
                 idCoeff = np.unravel_index( idCoeff, diffYYpNormAr.shape )
-                if idCoeff[0] > gridK1[2] - 10:
+                if idCoeff[1] > gridK1[2] - 10:
                     gd = ( ( gridK1[1] - gridK1[0] ) / ( gridK1[2] - 1 ) )
                     gridK1 = ( gridK1[1] - 10*gd, gridK1[1] + 1, int(1/gd + 1 + 10) )
                     print "gd", gd
@@ -563,26 +678,29 @@ def efdAnalyse1( directory, measurementLabel ):
                 
             print "abs min: ", idCoeff, diffYYpNormAr[idCoeff]
             
-            plt.figure()
-            xAr = np.linspace( gridK2[0], gridK2[1], gridK2[2] )
-            yAr = np.linspace( gridK1[0], gridK1[1], gridK1[2] )
-            plt.contourf( xAr, yAr, diffYYpNormAr, 200 )
-            plt.savefig("logs2/area/tmp/diffYYp_"+measurementLabel+"_%003d" %ii, dpi=500)
-            plt.clf
-            plt.close()
+            for jj in range( gridK0[2] ):
+                arr = diffYYpNormAr[jj]
+                plt.figure()
+                xAr = np.linspace( gridK2[0], gridK2[1], gridK2[2] )
+                yAr = np.linspace( gridK1[0], gridK1[1], gridK1[2] )
+                plt.contourf( xAr, yAr, arr, 200 )
+                plt.savefig("logs2/area/tmp/diffYYp_"+measurementLabel+"_%003d_%02d" %(ii, jj), dpi=500)
+                plt.clf
+                plt.close()
             
-            maxValueIm = diffYYpNormAr[idCoeff] + ( np.nanmax(diffYYpNormAr) - diffYYpNormAr[idCoeff] )*0.1
-            dataForDetail = diffYYpNormAr
-            dataForDetail[ dataForDetail > maxValueIm ] = np.nan
-            plt.contourf( xAr, yAr, dataForDetail, 100 )
-            plt.savefig("logs2/area/tmp/diffYYp_"+measurementLabel+"_%003d_D" %ii, dpi=500)
-            plt.clf
-            plt.close()
+                maxValueIm = diffYYpNormAr[idCoeff] + ( np.nanmax(diffYYpNormAr) - diffYYpNormAr[idCoeff] )*0.1
+                dataForDetail = arr
+                dataForDetail[ dataForDetail > maxValueIm ] = np.nan
+                plt.figure()
+                plt.contourf( xAr, yAr, dataForDetail, 100 )
+                plt.savefig("logs2/area/tmp/diffYYp_"+measurementLabel+"_%003d_%02d_D" %(ii, jj), dpi=500)
+                plt.clf
+                plt.close()
             
-            if idCoeff[1] == 1:
+            if idCoeff[2] == 1:
                 print "The abs min is dubious!"
-                S0, a, k1, k2, d, a0 = coeffAr[idCoeff]
-                logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeff], S0, a, k1, k2, d, a0 ) )
+                S0, a, k1, k2, d, a0, k0 = coeffAr[idCoeff]
+                logFit.write("%d, %f, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeff], S0, a, k1, k2, d, a0, k0 ) )
                 logFit.flush()
                 
                 plt.figure()
@@ -599,63 +717,85 @@ def efdAnalyse1( directory, measurementLabel ):
                 
                 continue
             
-            S0, a, k1, k2, d, a0 = coeffAr[idCoeff]
-            logFit.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeff], S0, a, k1, k2, d, a0 ) )
+            S0, a, k1, k2, d, a0, k0 = coeffAr[idCoeff]
+            logFit.write("%d, %f, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormAr[idCoeff], S0, a, k1, k2, d, a0, k0 ) )
             logFit.flush()
             
-            gridD1F = 2.0*( ( gridK1[1] + gridK1[0] ) / ( gridK1[2] - 1 ) )
-            gridD2F = 2.0*( ( gridK2[1] + gridK2[0] ) / ( gridK2[2] - 1 ) )
+            # + or - ?????
+            gridD1F = 5.0*( ( gridK1[1] - gridK1[0] ) / ( gridK1[2] - 1 ) )
+            gridD2F = 5.0*( ( gridK2[1] - gridK2[0] ) / ( gridK2[2] - 1 ) )
+            gridD0F = 2.0*( ( gridK0[1] - gridK0[0] ) / ( gridK0[2] - 1 ) )
+            
             gridK1F = ( k1 - gridD1F, k1 + gridD1F, gridF )
             gridK2F = ( k2 - gridD2F, k2 + gridD2F, gridF )
+            gridK0F = ( k0 - gridD0F, k0 + gridD0F, 9 )
+            
             print "Dedail"
-            diffYYpNormArF, coeffArF = fitModel5( x, y, ii, gridK1F, gridK2F, sigma = None, oneSide = True )
+            diffYYpNormArF, coeffArF = fitModel55( x, y, ii, gridK1F, gridK2F, gridK0F, sigma = None, oneSide = True )
             idCoeffF = np.nanargmin(diffYYpNormArF)
             idCoeffF = np.unravel_index( idCoeffF, diffYYpNormArF.shape )
-            S0, a, k1, k2, d, a0 = coeffArF[idCoeffF]
-            logFitF.write("%d, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormArF[idCoeffF], S0, a, k1, k2, d, a0 ) )
+            print "Final result: ", idCoeffF
+            S0, a, k1, k2, d, a0, k0 = coeffArF[idCoeffF]
+            logFitF.write("%d, %f, %f, %f, %f, %f, %f, %f, %f\r\n" %( ii, diffYYpNormArF[idCoeffF], S0, a, k1, k2, d, a0, k0 ) )
             print "Seed number, diffYYpNormF", ii, diffYYpNormArF[idCoeffF]
             logFitF.flush()
             
-            yp = model5( x, S0, a, k1, k2, d, a0 )
-            ypDI = model5DI( x, a, k1, k2, d, a0 )
-            ypDII = model5DII( x, a, k1, k2, d )
+            yp = model55( x, S0, a, k1, k2, d, a0, k0 )
+            ypDI = model55DI( x, a, k1, k2, d, a0, k0 )
+            ypDII = model55DII( x, a, k1, k2, d, a0, k0 )
             
             yN = y/S0
-            ypN = model5( x, 1, a/S0, k1, k2, d, a0/S0 )
-            ypDIN = model5DI( x, a/S0, k1, k2, d, a0/S0 )
-            ypDIIN = model5DII( x, a/S0, k1, k2, d )
+            ypN = model55( x, 1, a/S0, k1, k2, d, a0/S0, k0 )
+            ypDIN = model55DI( x, a/S0, k1, k2, d, a0/S0, k0 )
+            ypDIIN = model55DII( x, a/S0, k1, k2, d, a0/S0, k0 )
             
-            if k2 <= k1*d:
-                xMaxDI = -1
-                xMinDII = -1
-                yXmaxDI = -1
-                yXminDII = -1
-                yXmaxDIN = -1
-                yXminDIIN = -1
-            else:
-                xMaxDI = np.log( ( -k2**2 * ( 1 - d ) ) / ( k1*(k1*d - k2) ) ) / ( k2 - k1 )
-                yXmaxDI = model5DI(xMaxDI, a, k1, k2, d, a0)
-                yXmaxDIN = model5DI(xMaxDI, a/S0, k1, k2, d, a0/S0)
-                #print yXmaxDI
+            #if k2 <= k1*d:
+                #xMaxDI = -1
+                #xMinDII = -1
+                #yXmaxDI = -1
+                #yXminDII = -1
+                #yXmaxDIN = -1
+                #yXminDIIN = -1
+            #else:
+                #xMaxDI = np.log( ( -k2**2 * ( 1 - d ) ) / ( k1*(k1*d - k2) ) ) / ( k2 - k1 )
+                #yXmaxDI = model5DI(xMaxDI, a, k1, k2, d, a0)
+                #yXmaxDIN = model5DI(xMaxDI, a/S0, k1, k2, d, a0/S0)
+                ##print yXmaxDI
                 
-                xMinDII = np.log( ( k2**3 * ( 1 - d ) ) / ( k1**2 *(k2 - k1*d) ) ) / ( k2 - k1 )
-                yXminDII = model5DII(xMinDII, a, k1, k2, d )
-                yXminDIIN = model5DII(xMinDII, a/S0, k1, k2, d )
-                #print yXminDII
+                #xMinDII = np.log( ( k2**3 * ( 1 - d ) ) / ( k1**2 *(k2 - k1*d) ) ) / ( k2 - k1 )
+                #yXminDII = model5DII(xMinDII, a, k1, k2, d )
+                #yXminDIIN = model5DII(xMinDII, a/S0, k1, k2, d )
+                ##print yXminDII
+            
+            xMaxDI = np.argmax(ypDI)/fph
+            xMinDII = np.argmin(ypDII)/fph
+            yXmaxDI = np.max(ypDI)
+            yXminDII = np.min(ypDII)
+            yXmaxDIN = np.max(ypDIN)
+            yXminDIIN = np.min(ypDIIN)
+            if xMaxDI == 0:
+                extremI = 0
+            else:
+                extremI = 1
+                
+            if xMinDII == 0:
+                extremII = 0
+            else:
+                extremII = 1
                             
-            logDI.write("%d, %f, %f, %f, %f\r\n" %(ii, ypDI[0], xMaxDI, yXmaxDI, ypDI[359] ) )
+            logDI.write("%d, %f, %f, %f, %f, %d\r\n" %(ii, ypDI[0], xMaxDI, yXmaxDI, ypDI[-1], extremI ) )
             logDI.flush()
-            logDII.write("%d, %f, %f, %f, %f\r\n" %(ii, ypDII[0], xMinDII, yXminDII, ypDII[359] ) )
+            logDII.write("%d, %f, %f, %f, %f, %d\r\n" %(ii, ypDII[0], xMinDII, yXminDII, ypDII[-1], extremII ) )
             logDII.flush()
-            logDIN.write("%d, %f, %f, %f, %f\r\n" %(ii, ypDIN[0], xMaxDI, yXmaxDIN, ypDIN[359] ) )
+            logDIN.write("%d, %f, %f, %f, %f, %d\r\n" %(ii, ypDIN[0], xMaxDI, yXmaxDIN, ypDIN[-1], extremI ) )
             logDIN.flush()
-            logDIIN.write("%d, %f, %f, %f, %f\r\n" %(ii, ypDIIN[0], xMinDII, yXminDIIN, ypDIIN[359] ) )
+            logDIIN.write("%d, %f, %f, %f, %f, %d\r\n" %(ii, ypDIIN[0], xMinDII, yXminDIIN, ypDIIN[-1], extremII ) )
             logDIIN.flush()
             
             plt.figure()
             plt.plot(x,y,"k")
             plt.plot(x,yp,"r")
-            if xMaxDI != -1.0:
+            if xMinDII != 0:
                 plt.plot( [xMaxDI, xMaxDI], [np.nanmin(y), np.nanmax(y)], "b")
                 plt.plot( [xMinDII, xMinDII], [np.nanmin(y), np.nanmax(y)], "g")
             plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-F" %ii, dpi=200 )
@@ -666,7 +806,7 @@ def efdAnalyse1( directory, measurementLabel ):
             plt.plot(x,ypDI,"b")
             plt.plot(x,ypDII,"g")
             plt.plot( [0, 12], [0, 0], "k")
-            if xMaxDI != -1.0:
+            if xMinDII != 0:
                 plt.plot( [xMaxDI, xMaxDI], [0, yXmaxDI], "b")
                 plt.plot( [xMinDII, xMinDII], [0, yXminDII], "g")
             plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-FD" %ii, dpi=200 )
@@ -676,7 +816,7 @@ def efdAnalyse1( directory, measurementLabel ):
             plt.figure()
             plt.plot(x,yN,"k")
             plt.plot(x,ypN,"r")
-            if xMaxDI != -1.0:
+            if xMinDII != 0:
                 plt.plot( [xMaxDI, xMaxDI], [np.nanmin(yN), np.nanmax(yN)], "b")
                 plt.plot( [xMinDII, xMinDII], [np.nanmin(yN), np.nanmax(yN)], "g")
             plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-FN" %ii, dpi=200 )
@@ -687,7 +827,7 @@ def efdAnalyse1( directory, measurementLabel ):
             plt.plot(x,ypDIN,"b")
             plt.plot(x,ypDIIN,"g")
             plt.plot( [0, 12], [0, 0], "k")
-            if xMaxDI != -1.0:
+            if xMinDII != 0:
                 plt.plot( [xMaxDI, xMaxDI], [0, yXmaxDIN], "b")
                 plt.plot( [xMinDII, xMinDII], [0, yXminDIIN], "g")
             plt.savefig( "logs2/area/area_"+measurementLabel+"_Plot_fit_%003d-FDN" %ii, dpi=200 )
