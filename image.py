@@ -12,7 +12,8 @@ from matplotlib import pyplot as plt
 
 from contours import *
 
-CUTING = True
+ker1 = 10
+CUTING = False
 Xi = 100
 Yi = 200
 Xe = 3900
@@ -28,10 +29,12 @@ def cutImage(img, xi, yi, xe, ye, imShow = False ):
 
 def writeLabelsInImg( img, referencePoints1, outFileName, referencePoints2 = None, resize = None ):
     num1 = 0
+    #offset = np.array([100,0]) #for tae2016 only
     color1 = (0,0,255)
     font = cv2.FONT_HERSHEY_SIMPLEX
     for point in referencePoints1:
         point = tuple(point)
+        #point = tuple(point - offset) #for tae2016 only
         cv2.putText(img, str(num1),point, font, 3,color1,2 )
         num1 += 1
     
@@ -113,7 +116,7 @@ def imageMain( imageFile, tresh, color, cuting = True ):
     getHist( gray )
     if tresh:
         binaryImg = getThreshold( gray, tresh )
-        binaryImg2 = openingClosing( binaryImg, ker1 = 15, ker2 = None )
+        binaryImg2 = openingClosing( binaryImg, ker1, ker2 = None )
         
         newImgName = imageFile.split(".")[0]+"_test.png"
         newImgName2 = imageFile.split(".")[0]+"_test2.png"

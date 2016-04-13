@@ -153,6 +153,7 @@ def efdMain( imageFile, n = 6, directory = None ):
     contoursList, scaleCnt = getCleanList( contoursList, scaleNum, ignoreList ) #Cleanig
     referencePoints2, scalePoint = getCleanList( referencePoints, scaleNum, ignoreList )
     cv2.drawContours(img, contoursList, -1, (0,255,0), 1)
+    #cv2.drawContours(gray, contoursList, -1, (255,255,255), 5) #for tae2016 only
     numCntF = rows * columns
     if len(contoursList) == 1:
         print "!!!!!!!!!!----- BLACK IMAGE -----!!!!!!!!!!"
@@ -202,6 +203,7 @@ def efdMain( imageFile, n = 6, directory = None ):
         #print outFileNameLab    
         resize = RESIZE
         writeLabelsInImg( img, referencePointsxy, outFileNameLab, referencePoints, resize )
+        #writeLabelsInImg( gray, referencePointsxy, outFileNameLab, None, resize ) #for tae2016 only
         
         outFileNameBi = imageFile.split(".")[0]+"_bi.png"
         cv2.imwrite( outFileNameBi, binaryImg )

@@ -18,32 +18,34 @@ from data_analysis_tools import *
 
 
 IGNORE_LIST = []
-EFD_COEFFICIENTS = [7, 11, 12, 15, 19, 20]
-#EFD_COEFFICIENTS = [7]
-DATA_OUTPUT = [ "plots_1d", "plots_2d", "plots_3a", "plots_3d", "plots_4d", "plots_5a" ]
+#EFD_COEFFICIENTS = [7, 11, 12, 15, 19, 20]
+EFD_COEFFICIENTS = range(7,21)
+#DATA_OUTPUT = [ "plots_1d", "plots_2d", "plots_3a", "plots_3d", "plots_4d", "plots_5a" ]
+DATA_OUTPUT = [ "efd_"+str(ii) for ii in EFD_COEFFICIENTS ]
+print DATA_OUTPUT
 DEGREE = 3
 FRAMES_PER_H = 30.0
 SMOOTH_NUM_AREA = 10
 SMOOTH_NUM_AREA_DETAIL = 4
 DETAIL_AREA = 6 #time in hours
 OFFSET = 120
-LEN_AREA_G1 = 40
-LEN_AREA_G2 = 20 #30
-LEN_AREA_G3 = 10
+LEN_AREA_G1 = 12
+LEN_AREA_G2 = 6 #30
+LEN_AREA_G3 = 6
 
 LEN_EFD_G1 = 120
 LEN_EFD_G2 = 60
 LEN_EFD_G3 = 30
 
 #Fit model 5
-GRID0 = ( -0.199, 0.201, 21 )
-GRID1 = ( 0, 6.0, 301 )
-GRID2 = ( 0, 2.0, 101 )
+GRID0 = ( -0.099, 0.101, 11 )
+GRID1 = ( 0, 5.0, 2501 )
+GRID2 = ( 0, 2.0, 1001 )
 GRIDF = 101
 
 
 createAreaPlots = False
-createAreaPlotsGrad = False
+createAreaPlotsGrad = True
 createAreaDetail = False
 areaAnalyse2 = True
 createEfdsPlotsOrig = True
@@ -82,6 +84,12 @@ def model5DII( x, a, k1, k2, d ):
 
 def model55DII( x, a, k1, k2, d, a0, k0 ):
     return -a*k1/( k1 -k2 ) * ( k1*( -k2 + k1*d )* np.exp(-k1*x ) + k2**2 *( 1 - d )* np.exp(-k2*x ) ) + a0*k0**2 *np.exp(-k0*x )
+
+
+def ensureDir(f):
+    d = os.path.dirname(f)
+    if not os.path.exists(d):
+        os.makedirs(d)
 
 
 def removeNan( x, y ):
@@ -553,8 +561,9 @@ def efdAnalyse1( directory, measurementLabel ):
         log = open("logs2/area/extremes_area_"+measurementLabel+".txt", "w")
         for ii in xrange(d2):
             y = areaAr[:, ii]
-            xn2a, yn2a = getSmoothData2( x, y, smoothNumA, outlier = True )
-            x2, y2, x3, y3, x4, y4 = myGradient(xn2a, yn2a, lenAG1, lenAG2, lenAG3 )
+            #xn2a, yn2a = getSmoothData2( x, y, smoothNumA, outlier = True )
+            #x2, y2, x3, y3, x4, y4 = myGradient(xn2a, yn2a, lenAG1, lenAG2, lenAG3 )
+            x2, y2, x3, y3, x4, y4 = myGradient(x, y, lenAG1, lenAG2, lenAG3 )
             plt.figure()
             plt.plot(x2, y2, "ro-" )
             plt.plot(x3, y3, "b-" )
@@ -570,7 +579,7 @@ def efdAnalyse1( directory, measurementLabel ):
             plt.close()
             
             log.write(str(ii)+"\r\n")
-            extremes0 = getExtremes( xn2, yn2, x2, y2 )
+            extremes0 = getExtremes( x, y, x2, y2 )
             log.write( "orig. data: "+str(extremes0)+"\r\n" )
             extremes1 = getExtremes( x2, y2, x3, y3 )
             log.write( "first der.: "+str(extremes1)+"\r\n" )
@@ -584,10 +593,10 @@ def efdAnalyse1( directory, measurementLabel ):
         print areaAr.shape
         for ii in xrange(d2):
             y = areaAr[:, ii]
-            x1, y1 = getSmoothData2(x, y, smoothNumA, outlier = True )
+            #x1, y1 = getSmoothData2(x, y, smoothNumA, outlier = True )
             plt.figure()
             plt.plot(x, y, "ko-" )
-            plt.plot(x1, y1, "b-" )
+            #plt.plot(x1, y1, "b-" )
             plt.savefig("logs2/area/area_Plot_%003d" %ii, dpi=100)
             plt.clf
             plt.close()
@@ -655,8 +664,8 @@ def efdAnalyse1( directory, measurementLabel ):
                 #continue
             y = areaAr[:, ii]
             #sigma = np.ones( y.shape )[300:] = 2.0
-            #y = y[0:420]
-            #x = x[0:420]
+            y = y[0:420]
+            x = x[0:420]
             print "len(x)", len(x)
             
             print "--------------------------------------------------------"
@@ -870,6 +879,7 @@ def efdAnalyse1( directory, measurementLabel ):
     for item in efdsCoeff:
         plotLimits = [ np.nanmin( efds[:, :, item] ), np.nanmax( efds[:, :, item] ) ]
         dataOutP = dataOutPut[kk]
+        ensureDir("logs2/"+str(dataOutP)+"/")
         spl = interpolate.UnivariateSpline
         
         logResults = open("logs2/"+dataOutP+"/log_"+measurementLabel+"_results.txt", "w")

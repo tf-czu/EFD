@@ -9,10 +9,13 @@
 import sys
 import os
 import numpy as np
+from data2 import *
 from matplotlib import pyplot as plt
+from elliptic_fourier_descriptors import *
+
 
 IGNORE_LIST = [ 96, 116 ]
-FRAMES_PER_H = 30.0
+FRAMES_PER_H = 12.0
 
 
 def getEfdCoefficient(num):
@@ -41,6 +44,7 @@ def readData( fileList, directory, subject, ignorList ):
                 continue
             #print fileN
             fId = fileN.split("_")[1]
+            #fId = fileN.split("_")[2] # for m_tae2016 only!!
             fId = int(fId) - 1
             fileIdList.append(fId)
             
@@ -82,6 +86,7 @@ def readData( fileList, directory, subject, ignorList ):
                 print fileN
                 continue
             fId = fileN.split("_")[1]
+            #fId = fileN.split("_")[2] #only for m_tae2016!!
             fId = int(fId) - 1
             fileIdList.append(fId)
             
@@ -173,10 +178,13 @@ def areaAnalyse(directory):
     
     print meanNormArea, sdNormArea
     x = ( np.array(range( n )) + 1 ) * 1/fph
+    #plt.figure()
+    plt.subplots(figsize=(20,6))
     plt.errorbar( x, meanNormArea, yerr=sdNormArea )
     plt.show()
+    plt.savefig("logs/area/area_PlotE", dpi=300)
     
-    results = open("logs/result_area.txt", "w")
+    results = open("logs/area/result_area.txt", "w")
     results.write("note:\r\n")
     results.write("Ignore list: "+str(ignorList)+"\r\n")
     results.write("meanNormArea\r\n")
@@ -227,7 +235,7 @@ def efdAnalyse( directory ):
         plt.hist(efds[0, :, jj])
         print jj
         plt.title("koeficient: "+str(jj))
-        plt.savefig('hists_test/Hist'+str(jj), dpi=50)
+        plt.savefig('hists_test/Hist'+str(jj), dpi=100)
         plt.close()
     
     n = meanEfds.shape[0]
@@ -255,6 +263,208 @@ def efdAnalyse( directory ):
         plt.close()
         
 
+def efdAnalyse2( directory ):
+    ignorList = IGNORE_LIST
+    fph = FRAMES_PER_H
+    subject = "efd"
+    
+    fileList = getLogs( directory )
+    efds = readData( fileList, directory, subject, ignorList )
+    
+    efdErrL = []
+    print efds.shape
+    d1 ,d2, d3 = efds.shape
+    for nn in xrange(d2):
+        print nn
+        for ii in xrange(d1):
+            efdR = efds[ii, nn, :]
+            efdR[:4] = 0
+            efdR = np.resize(efdR,(20,4))
+            #print efdR
+            #print len(efdR)
+            recR = reconstruct(efdR, T = 2810.5, K = None)
+            errL = []
+            for jj in xrange(2,20+1):
+                efd = efds[ii, nn, :]
+                efd[:4] = 0
+                efd = np.resize(efd,(20,4))
+                efd = efd[:jj]
+                #print efd
+                rec = reconstruct(efd, T = 2810.5, K = None)
+                err = np.linalg.norm(recR-rec)/np.linalg.norm(recR)
+                errL.append(err)
+                #np.savetxt("recR", recR)
+                #np.savetxt("rec", rec)
+                #np.savetxt("recR-rec", recR-rec)
+                #print "{0}".format(recR)
+                #print "{0}".format(rec)
+                #print "{0}".format(recR - rec)
+                #sys.exit()
+            efdErrL.append(errL)
+    
+    efdErr = np.array(efdErrL)
+    efdErrMean = np.mean(efdErr,0)
+    efdErrSD = np.std(efdErr,0)
+    print efdErrMean
+    print efdErrSD
+    plt.boxplot(efdErr)
+    plt.savefig("logs/boxplot", dpi=300)
+    
+    x = range(1,20)
+    plt.subplots(figsize=(20,10))
+    plt.plot(x, efdErrMean, "ko", label = "Mean value")
+    plt.errorbar( x, efdErrMean, yerr=efdErrSD,fmt='ko', ecolor = "k", label = "Standard deviation", capthick=2, markersize=10 )
+    #plt.legend( loc = 1, borderaxespad = 0.2 )
+    plt.axis([ 0, 20, -0.01, 0.08])
+    plt.xlabel("Harmonic content N", fontsize = 25)
+    plt.ylabel("Relative error RE", fontsize = 25)
+    plt.yticks( size = 20)
+    plt.xticks( x, size = 20)
+    plt.grid( True )
+    plt.savefig("logs/ErrorPlot", dpi=300)
+    plt.close()
+    
+
+def efdAnalyse3( directory ):
+    ignorList = IGNORE_LIST
+    fph = FRAMES_PER_H
+    subject = "efd"
+    
+    fileList = getLogs( directory )
+    efds = readData( fileList, directory, subject, ignorList )
+    
+    print efds.shape
+    d1 ,d2, d3 = efds.shape
+    efds = np.reshape(efds, ( d1*d2, d3 ) )
+    efds = np.abs(efds)
+    meanEfds = np.mean(efds,0)[4:24]
+    sdEfds = np.std(efds,0)[4:24]
+    print meanEfds
+    maxEfds = np.max(efds,0)[4:24]
+    minEfds = np.min(efds,0)[4:24]
+    print sdEfds
+    
+    x = np.arange(4,24)
+    xLabel = [ getEfdCoefficient(xx) for xx in x ]
+    plt.figure()
+    plt.subplots(figsize=(20,6))
+    plt.subplots_adjust(bottom=0.15)
+    plt.plot(x, meanEfds, "ko", markersize=10, label = "Mean value")
+    plt.plot(x, maxEfds, "k_", markersize=10, mew=2.0, label = "Mean value")
+    plt.plot(x, minEfds, "k_", markersize=10, mew=2.0, label = "Mean value")
+    #plt.errorbar( x, meanEfds, yerr=sdEfds,fmt='ko', ecolor = "k", label = "Standard deviation", capthick=2 )
+    plt.grid( True )
+    plt.axis([3, 24, 10e-8, 1.2])
+    plt.yscale('log')
+    #plt.legend( loc = 1, borderaxespad = 0.2 )
+    plt.xlabel("Elliptic Fourier descriptors", fontsize = 25)
+    plt.ylabel("Magnitude", fontsize = 25)
+    plt.yticks( size = 20)
+    plt.xticks( x, xLabel, size = 20)
+    #plt.ylim(10e-6, 1.2)
+    plt.savefig("logs/EFDSPlot", dpi=300)
+    plt.close()
+
+
+def efdAnalyse4( directory ):
+    ignorList = IGNORE_LIST
+    fph = FRAMES_PER_H
+    subject = "efd"
+    
+    fileList = getLogs( directory )
+    efds = readData( fileList, directory, subject, ignorList )
+    
+    efdErrL = []
+    print efds.shape
+    d1 ,d2, d3 = efds.shape
+    for nn in xrange(d2):
+        print nn
+        for ii in xrange(d1):
+            efdR = efds[ii, nn, :]
+            efdR[:4] = 0
+            efdR = np.resize(efdR,(20,4))
+            #print efdR
+            #print len(efdR)
+            recR = reconstruct(efdR, T = 2810.5, K = None)
+            efd = np.zeros([4,4])
+            efd[1,0] = efdR[1,0]
+            efd[1,3] = efdR[1,3]
+            efd[3,0] = efdR[3,0]
+            efd[3,3] = efdR[3,3]
+            rec = reconstruct(efd, T = 2810.5, K = None)
+            err = np.linalg.norm(recR-rec)/np.linalg.norm(recR)
+            efdErrL.append(err)
+    
+    efdErr = np.array(efdErrL)
+    efdErrMean = np.mean(efdErr)
+    efdErrSD = np.std(efdErr)
+    print efdErrMean
+    print efdErrSD
+    plt.boxplot(efdErr)
+    plt.savefig("logs/boxplot2", dpi=300)
+    f=open("logs/efdAnalyse4_log.txt", "w")
+    f.write("efdErrMean %f\r\n" %efdErrMean)
+    f.write("efdErrSD %f\r\n" %efdErrSD)
+    f.close()
+    
+
+def efdAreaPlot( directory ):
+    ignorList = IGNORE_LIST
+    fph = FRAMES_PER_H
+    subject = "efd"
+    
+    fileList = getLogs( directory )
+    efds = readData( fileList, directory, subject, ignorList )
+    area = readData( fileList, directory, "area", ignorList )
+    
+    d1, d2, d3 = efds.shape
+    seeds = range(20)
+    x = ( np.arange(d1) ) * 1/fph
+    for ss in seeds:
+        sArea = area[:,ss]
+        x2, y2, x3, y3, x4, y4 = myGradient(x, sArea, 12, 12, 12 )
+        
+        efd1d = efds[:, ss, 7]
+        efd2d = efds[ :, ss, 11 ]
+        efd3a = efds[ :, ss, 12 ]
+        efd3d = efds[ :, ss, 15 ]
+        
+        fig = plt.figure(figsize=(15,20))
+        ax = fig.add_subplot(211)
+        p0, = ax.plot( x, sArea, "ko-", label = "Seed area" )
+        ax2 = ax.twinx()
+        p1, = ax2.plot( x2, y2, "k-", label = "Seed area rate" )
+        ax.grid()
+        ax.set_xlabel("Time (h)", fontsize = 20)
+        ax.set_ylabel("Seed area ($mm^{2}$)", fontsize = 20)
+        ax2.set_ylabel("Seed area rate ($mm^{2} h^{-1}$)", fontsize = 20)
+        #ax2.set_ylim(0, 35)
+        #ax.set_ylim(-20,100)
+        ax.tick_params(labelsize=15)
+        ax2.tick_params(labelsize=15)
+        l = [ p0, p1 ]
+        ax.legend( l, [ll.get_label() for ll in l], loc=5 )
+        
+        ax = fig.add_subplot(212)
+        p0, = ax.plot( x, efd1d, "ko-", label = "Coefficient $d_{1}$" )
+        ax2 = ax.twinx()
+        p1, = ax2.plot( x, efd2d, "k+-", label = "Coefficient $d_{2}$" )
+        p2, = ax2.plot( x, efd3a, "kv-", label = "Coefficient $a_{3}$" )
+        p3, = ax2.plot( x, efd3d, "k^-", label = "Coefficient $d_{3}$" )
+        ax.grid()
+        ax.set_xlabel("Time (h)", fontsize = 20)
+        ax.set_ylabel("Coefficient $d_{1}$ (-)", fontsize = 20)
+        ax2.set_ylabel("Coefficients $d_{2}$, $a_{3}$ and $d_{3}$ (-)", fontsize = 20)
+        #ax2.set_ylim(0, 35)
+        #ax.set_ylim(-20,100)
+        ax.tick_params(labelsize=15)
+        ax2.tick_params(labelsize=15)
+        l = [ p0, p1, p2, p3 ]
+        ax.legend( l, [ll.get_label() for ll in l], loc = 5 )
+        
+        plt.savefig("logs/fig_%d" %ss, dpi=300)
+        
+
 
 if __name__ == "__main__": 
     if len(sys.argv) < 2:
@@ -269,5 +479,17 @@ if __name__ == "__main__":
         
     elif switch == "efd":
         efdAnalyse( directory )
+    
+    elif switch == "efd2":
+        efdAnalyse2( directory )
+        
+    elif switch == "efd3":
+        efdAnalyse3( directory )
+        
+    elif switch == "efd4":
+        efdAnalyse4( directory )
+        
+    elif switch == "plot":
+        efdAreaPlot( directory )
         
     print "END"
